@@ -1,0 +1,57 @@
+# Dependencies
+/vendor/
+/node_modules/
+/tigermodules/
+
+# Logs & Debug
+npm-debug.log
+yarn-error.log
+.diff-files.txt
+ngrok
+
+# Laravel Specific
+/public/hot
+/public/storage
+/public/vendor/argonfront
+/public/build
+
+# Laravel Storage
+/storage/*.key
+/storage/framework/views
+/storage/installed
+/storage/activation
+/storage/verified
+/storage/multilanguagemigrated
+/storage/auth0sync
+/storage/pail
+
+# Compiled files
+bootstrap/compiled.php
+
+# Environment & Config
+.env
+.env.*
+.env.backup
+.env.production
+Homestead.yaml
+Homestead.json
+/.vagrant
+auth.json
+.phpactor.json
+
+# PHPUnit
+.phpunit.result.cache
+
+# IDE / Dev Tools
+/.dev
+
+# Legacy Laravel (for older versions)
+app/storage/
+public_html/storage
+public_html/hot
+
+# Ignore backup and old code directories
+_old_backup/
+UPDATE/
+freshcode/
+__oke/

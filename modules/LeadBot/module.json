@@ -1,0 +1,21 @@
+{
+    "alias": "lead-bot",
+    "nameSpace": "Modules\\LeadBot",
+    "version": "1.0.0",
+    "description": "",
+    "keywords": [],
+    "active": 1,
+    "order": 0,
+    "providers": [
+        "Modules\\LeadBot\\Providers\\Main"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": [],
+    "staffmenus": [
+        { "name": "LeadBot", "icon": "ni ni-robot text-purple", "route": "lead-bot.index" }
+    ],
+    "ownermenus": [
+        { "name": "LeadBot", "icon": "ni ni-robot text-purple", "route": "lead-bot.index" }
+    ]
+}

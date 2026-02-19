@@ -1,0 +1,18 @@
+{
+    "alias": "flow-ground",
+    "description": "WhatsApp Flow Management - build and sync flows",
+    "keywords": [],
+    "active": 1,
+    "order": 0,
+    "alwayson": true,
+    "providers": ["Modules\\FlowGround\\Providers\\Main"],
+    "aliases": {},
+    "files": [],
+    "requires": [],
+    "staffmenus": [
+        {"name": "Flow Ground", "icon": "ni ni-send text-green", "route": "flow-ground.index"}
+    ],
+    "ownermenus": [
+        {"name": "Flow Ground", "icon": "ni ni-send text-green", "route": "flow-ground.index"}
+    ]
+}

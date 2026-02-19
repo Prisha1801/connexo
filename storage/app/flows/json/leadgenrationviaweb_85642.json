@@ -1,0 +1,65 @@
+{
+    "version": "2.1",
+    "screens": [
+        {
+            "id": "leadgenrationviaweb",
+            "title": "Lead genration via Web",
+            "terminal": true,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "user_data",
+                        "children": [
+                            {
+                                "type": "TextSubheading",
+                                "text": "Lead genration form"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Name",
+                                "name": "text-1732634953173-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Mobile Number",
+                                "name": "text-1732634954590-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Email",
+                                "name": "text-1732634955623-0"
+                            },
+                            {
+                                "type": "DatePicker",
+                                "required": false,
+                                "label": "DOB",
+                                "name": "date-1732634976270-0"
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Submit Button",
+                                "on-click-action": {
+                                    "name": "complete",
+                                    "payload": {
+                                        "text-1732634953173-0": "${form.text-1732634953173-0}",
+                                        "text-1732634954590-0": "${form.text-1732634954590-0}",
+                                        "text-1732634955623-0": "${form.text-1732634955623-0}",
+                                        "date-1732634976270-0": "${form.date-1732634976270-0}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
