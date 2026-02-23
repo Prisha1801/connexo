@@ -81,6 +81,44 @@ class WorkflowController extends Controller
         ]);
     }
 
+    /**
+     * Return HTML for a task form (create_contact, call_api, send_whatsapp) by type and index.
+     * Used when user changes task type dropdown so the correct form is injected without full page reload.
+     */
+    public function getTaskForm(Request $request, $workflowId, string $taskType, $index)
+    {
+        $workflow = Workflow::with('tasks')->findOrFail($workflowId);
+        $webhookResponse = WorkflowWebhookData::where('workflow_id', $workflow->id)->whereNotNull('mapped_data')->latest()->first();
+        $mappedDataArray = [];
+        if ($webhookResponse && $webhookResponse->mapped_data) {
+            $mappedDataArray = collect($webhookResponse->mapped_data)
+                ->map(fn($item, $key) => ['key' => $key, 'label' => $item['label'], 'value' => $item['value']])
+                ->values()
+                ->all();
+        }
+        $groups = Group::get();
+        $agents = User::where('company_id', $workflow->company_id)->get();
+        $contactFields = Field::pluck('name', 'id')->toArray();
+        $whatsappCampaigns = Campaign::where('is_api', true)->get();
+        $autoretargetCampaigns = AutoRetargetCampaign::where('is_active', true)->get();
+        $taskConfig = [];
+        $viewName = 'work-flows::layouts.partials.task-form-' . $taskType;
+        if (!view()->exists($viewName)) {
+            return response()->json(['html' => ''], 200);
+        }
+        $html = view($viewName, [
+            'index' => $index,
+            'taskConfig' => $taskConfig,
+            'mappedDataArray' => $mappedDataArray,
+            'groups' => $groups,
+            'contactFields' => $contactFields,
+            'whatsappCampaigns' => $whatsappCampaigns,
+            'autoretargetCampaigns' => $autoretargetCampaigns,
+            'agents' => $agents,
+        ])->render();
+        return response()->json(['html' => $html], 200);
+    }
+
     public function destroy(Workflow $workflow)
     {
         $workflow->delete();
@@ -121,7 +159,7 @@ class WorkflowController extends Controller
             'tasks.*.task_type' => 'required|string|in:create_contact,send_whatsapp,call_api',
             'tasks.*.task_name' => 'sometimes|string|max:255',
             'tasks.*.order' => 'required|integer',
-            'tasks.*.task_config' => 'required|array',
+            'tasks.*.task_config' => 'sometimes|array',
             'tasks.*.id' => 'sometimes|integer|exists:workflow_tasks,id',
         ]);
 
@@ -136,10 +174,10 @@ class WorkflowController extends Controller
         // Process tasks
         $taskIds = [];
         foreach ($validated['tasks'] as $taskData) {
-            // Prepare base data for both update/create
+            // Prepare base data for both update/create (task_config may be empty for newly added tasks)
             $baseData = [
                 'task_type' => $taskData['task_type'],
-                'task_config' => $taskData['task_config'],
+                'task_config' => $taskData['task_config'] ?? [],
                 'order' => $taskData['order'],
             ];
 

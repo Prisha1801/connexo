@@ -3,7 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\CTWAController;
+use Modules\CTWA\Http\Controllers\CTWAController;
 
 
 
@@ -23,5 +23,5 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/v2/login', [LoginController::class, 'login']);
-Route::match(['get', 'post'], 'webhook/wpbox/receive/{token}', [CtwaController::class, 'receive']);
+Route::match(['get', 'post'], 'webhook/wpbox/receive/{token}', [CTWAController::class, 'receive']);
 Route::get('/leads', [CTWAController::class, 'viewLeads']);

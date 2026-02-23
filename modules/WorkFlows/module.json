@@ -1,13 +1,14 @@
 {
     "alias": "work-flows",
+    "nameSpace": "Modules\\WorkFlows",
     "description": "",
     "keywords": [],
     "active": 1,
     "order": 0,
-    "providers": [
-        "Modules\\WorkFlows\\Providers\\Main"
-    ],
+    "providers": ["Modules\\WorkFlows\\Providers\\Main"],
     "aliases": {},
     "files": [],
-    "requires": []
+    "requires": [],
+    "ownermenus": [{"name": "Workflows", "icon": "ni ni-atom text-info", "route": "workflows.index"}],
+    "staffmenus": [{"name": "Workflows", "icon": "ni ni-atom-3 text-info", "route": "workflows.index"}]
 }

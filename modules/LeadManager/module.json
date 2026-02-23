@@ -1,0 +1,14 @@
+{
+    "alias": "lead-manager",
+    "nameSpace": "Modules\\LeadManager",
+    "description": "Lead management for workflows",
+    "keywords": [],
+    "active": 1,
+    "order": 0,
+    "providers": ["Modules\\LeadManager\\Providers\\Main"],
+    "aliases": {},
+    "files": [],
+    "requires": [],
+    "ownermenus": [{"name": "Lead Manager", "icon": "ni ni-single-02 text-teal", "route": "lead-manager.index"}],
+    "staffmenus": [{"name": "Lead Manager", "icon": "ni ni-single-02 text-teal", "route": "lead-manager.index"}]
+}

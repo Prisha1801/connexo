@@ -1,44 +1,88 @@
-@extends('layouts.app-client')
-@section('css')
-    @include('work-flows::edit-css')
-@endsection
-@section('content')
-    <div id="kt_app_content" class="app-content flex-column-fluid">
-        <div id="kt_app_content_container" class="app-container container-xxl">
+@extends('layouts.app', ['title' => __('Edit Workflow')])
 
+@section('title')
+    <title>{{ __('Edit Workflow') }}</title>
+@endsection
+
+@section('head')
+    @include('work-flows::partials.ui')
+    @include('work-flows::edit-css')
+    <script>
+    window.__workflowFormData = {
+        mappedDataArray: @json($mappedDataArray ?? []),
+        groups: @json($groups ?? []),
+        contactFields: @json($contactFields ?? []),
+        whatsappCampaigns: @json($whatsappCampaigns ?? []),
+        autoretargetCampaigns: @json($autoretargetCampaigns ?? []),
+        agents: @json($agents ?? [])
+    };
+    </script>
+@endsection
+
+@section('content')
+<div class="container-fluid lb-wrap lb-scope workflow-classy">
+    <div class="lb-card">
+        <header class="lb-page-header">
+            <div class="lb-top">
+                <div>
+                    <h1 class="lb-title">
+                        <span class="lb-icon"><i class="ni ni-diagram-3"></i></span>
+                        {{ __('Edit Workflow') }}
+                    </h1>
+                    <span class="lb-subtitle">
+                        <span class="lb-pill primary">{{ ucfirst($workflow->app_id) }}</span>
+                        <span class="lb-pill ml-2">#{{ $workflow->id }}</span>
+                    </span>
+                </div>
+                <div class="lb-toolbar">
+                    <a href="{{ route('workflows.index') }}" class="lb-btn-soft">
+                        <i class="ni ni-bold-left"></i> {{ __('Back') }}
+                    </a>
+                    <button type="submit" form="workflow-form" class="lb-btn-primary">
+                        <i class="ni ni-check-bold"></i> {{ __('Save') }}
+                    </button>
+                    <form action="{{ route('workflows.destroy', $workflow->id) }}" method="POST" class="d-inline m-0" id="workflow-delete-form">
+                        @csrf
+                        @method('DELETE')
+                        <button type="button" class="lb-btn-danger" id="deleteWorkflowBtn">
+                            <i class="ni ni-fat-remove"></i> {{ __('Delete') }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </header>
+
+        <div class="lb-body">
             @if (session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
+                <div class="lb-flash">
+                    <div class="alert alert-success mb-0">{{ session('success') }}</div>
+                </div>
             @endif
-            <div class="container-xxl card">
-                <form action="{{ route('workflows.update', $workflow->id) }}" method="POST">
-                    @csrf
-                    @method('PUT')
-                    <!--begin::Card header-->
-                    <div class="card-header border-0 pt-6">
-                        <h2 class="card-title align-items-start flex-column mb-0">
-                            <div class="position-relative">
-                                <small class="text-muted">{{ __('Trigger: When this happens …') }}</small>
-                                <div class="d-flex align-items-center mt-4">
-                                    <label id="workflownameLabel"
-                                        class="form-label fw-bold fs-4 flex-grow-1">{{ $workflow->name }}</label>
-                                    <input type="text" class="form-control form-control-solid d-none" id="workflowname"
-                                        name="workflowname" value="{{ $workflow->name }}">
-                                    <span id="editWorkflowName" class="ms-2" style="cursor: pointer;"><i
-                                            class="ki-duotone ki-pencil fs-2">
-                                            <span class="path1"></span>
-                                            <span class="path2"></span>
-                                        </i></span>
-                                </div>
-                            </div>
-                        </h2>
+
+            <form action="{{ route('workflows.update', $workflow->id) }}" method="POST" id="workflow-form" data-workflow-id="{{ $workflow->id }}" data-task-form-url="{{ route('workflows.task-form', ['workflowId' => $workflow->id, 'taskType' => '__TYPE__', 'index' => '__INDEX__']) }}">
+                @csrf
+                @method('PUT')
+
+                <section class="lb-section">
+                    <div class="lb-section-hd">
+                        <h3 class="lb-section-title mb-0">{{ __('Workflow details') }}</h3>
+                        <span class="text-muted small">{{ __('Trigger: when this happens…') }}</span>
                     </div>
-                    <!--end::Card header-->
-                    <!--begin::Card body-->
-                    <div class="card-body py-4">
+                    <div class="lb-section-bd">
+                        <div class="position-relative mb-3">
+                            <div class="d-flex align-items-center">
+                                <label id="workflownameLabel" class="font-weight-bold mb-0" style="font-size: 1.05rem;">{{ $workflow->name }}</label>
+                                <input type="text" class="form-control d-none ml-3" id="workflowname" name="workflowname" value="{{ $workflow->name }}" style="max-width: 520px; border-radius: 12px; height: 44px;">
+                                <button type="button" id="editWorkflowName" class="lb-icon-btn ml-2" title="{{ __('Rename') }}">
+                                    <i class="ni ni-ruler-pencil"></i>
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
-                            <label for="app_id" class="form-label">Select App</label>
-                            <select class="form-control" id="app_id" name="app_id" required>
-                                <option value="" disabled>Select an app</option>
+                            <label for="app_id" class="form-label">{{ __('Select App') }}</label>
+                            <select class="form-control" id="app_id" name="app_id" required style="border-radius: 12px; min-height: 44px;">
+                                <option value="" disabled>{{ __('Select an app') }}</option>
                                 <option value="webhook" {{ $workflow->app_id == 'webhook' ? 'selected' : '' }}>Webhook
                                 </option>
                                 <option value="indiamart" {{ $workflow->app_id == 'indiamart' ? 'selected' : '' }}>IndiaMart
@@ -57,25 +101,22 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="trigger_event" class="form-label">Trigger Event</label>
-                            <select class="form-control" id="trigger_event" name="trigger_event">
-                                <option value="">Select Trigger</option>
+                            <label for="trigger_event" class="form-label">{{ __('Trigger Event') }}</label>
+                            <select class="form-control" id="trigger_event" name="trigger_event" style="border-radius: 12px; min-height: 44px;">
+                                <option value="">{{ __('Select Trigger') }}</option>
                             </select>
                         </div>
                         <div class="mt-4">
-                            <label for="trigger_event" class="form-label">Webhook URL</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="webhookUrl"
-                                    value="{{ url('/api/webhook/' . $workflow->webhook_token) }}" readonly>
-                                <button type="button" class="btn btn-secondary" id="copyWebhookUrl">📋 Copy</button>
+                            <label class="form-label">{{ __('Webhook URL') }}</label>
+                            <div class="d-flex align-items-center">
+                                <input type="text" class="form-control mr-2" id="webhookUrl"
+                                    value="{{ url('/api/webhook/' . $workflow->webhook_token) }}" readonly style="border-radius: 12px; flex: 1;">
+                                <button type="button" class="lb-icon-btn ml-2" id="copyWebhookUrl" title="{{ __('Copy') }}">
+                                    <i class="ni ni-single-copy-04"></i>
+                                </button>
                             </div>
-                            @if (isset($webhookResponse) && $webhookResponse->mapped_data)
-                                <button class="btn btn-secondary mt-4" id="recaptureWebhookResponse">Re-Capture Webhook
-                                    Response</button>
-                            @else
-                                <button class="btn btn-secondary mt-4" id="captureWebhookResponse">Capture Webhook
-                                    Response</button>
-                            @endif
+                            <button type="button" class="lb-btn-soft mt-3" id="captureWebhookResponse" data-fetch-url="{{ url('workflow-webhooks/' . $workflow->id) }}" style="{{ isset($webhookResponse) && $webhookResponse->mapped_data ? 'display:none' : '' }}">{{ __('Capture Webhook Response') }}</button>
+                            <button type="button" class="lb-btn-soft mt-3" id="recaptureWebhookResponse" data-fetch-url="{{ url('workflow-webhooks/' . $workflow->id) }}" style="{{ isset($webhookResponse) && $webhookResponse->mapped_data ? '' : 'display:none' }}">{{ __('Re-Capture Webhook Response') }}</button>
                             <div class="mt-3">
                                 <span id="toggleResponseView" class="mt-2"
                                     style="display: {{ isset($webhookResponse) && $webhookResponse->mapped_data ? 'inline-block' : 'none' }}; cursor:pointer; fs-4; font-weight: bold;">
@@ -105,62 +146,41 @@
                                 </div>
                             </div>
                         </div>
-                        <hr>
-                        <h3 class="mb-3">Tasks</h3>
-                        <p class="mb-3">Drag and drop tasks to arrange execution order. (At least one task is required.)
-                        </p>
+                    </div>
+                </section>
+
+                <section class="lb-section">
+                    <div class="lb-section-hd">
+                        <h3 class="lb-section-title mb-0">{{ __('Tasks') }}</h3>
+                        <span class="text-muted small">{{ __('Drag and drop to reorder. At least one task is required.') }}</span>
+                    </div>
+                    <div class="lb-section-bd">
                         <div id="tasks-container" class="row">
                             @if ($workflow->tasks->isEmpty())
                                 <!-- Default task-item if no tasks exist -->
                                 <div class="task-item col-md-12 mb-3" data-index="0">
-                                    <div class="card">
-                                        <div
-                                            class="card-header d-flex align-items-center justify-content-between gap-4 py-4">
-                                            <i class="ki-duotone ki-abstract-20 drag-handle me-2 fs-2x text-gray-400">
-                                                <span class="path1"></span>
-                                                <span class="path2"></span>
-                                            </i>
+                                    <div class="card task-card">
+                                        <div class="card-header d-flex align-items-center justify-content-between gap-4 py-4">
+                                            <span class="drag-handle mr-3" style="cursor:grab; color:#94a3b8;"><i class="ni ni-bullet-list-67"></i></span>
                                             <!-- LEFT SIDE -->
                                             <div class="flex-grow-1 mb-2">
-                                                <label class="task-name-label fw-bold d-block mt-4 mb-2">Task Name</label>
-                                                <select name="tasks[0][task_type]" class="form-control task-type w-50 mb-2"
-                                                    required>
-                                                    <option value="">--Select Task--</option>
-                                                    <option value="create_contact">Create Contact</option>
-                                                    {{-- <option value="send_email">Send Email</option> --}}
-                                                    {{-- <option value="send_sms">Send SMS</option> --}}
-                                                    <option value="call_api">Call API</option>
-                                                    <option value="send_whatsapp">Send WhatsApp</option>
+                                                <label class="task-name-label font-weight-bold d-block mt-2 mb-2">{{ __('Task Name') }}</label>
+                                                <select name="tasks[0][task_type]" class="form-control task-type w-50 mb-2" required>
+                                                    <option value="">--{{ __('Select Task') }}--</option>
+                                                    <option value="create_contact">{{ __('Create Contact') }}</option>
+                                                    <option value="call_api">{{ __('Call API') }}</option>
+                                                    <option value="send_whatsapp">{{ __('Send WhatsApp') }}</option>
                                                 </select>
-                                                <input type="text" name="tasks[0][task_name]"
-                                                    class="form-control task-name mt-2 w-50 mb-2"
-                                                    placeholder="Enter Task Name" style="display: none;">
+                                                <input type="text" name="tasks[0][task_name]" class="form-control task-name mt-2 w-50 mb-2" placeholder="{{ __('Enter Task Name') }}" style="display: none;">
                                             </div>
                                             <!-- RIGHT SIDE (Toggle & Three Dots) -->
                                             <div class="d-flex align-items-center text-nowrap">
-                                                <button class="btn btn-light toggle-task-body me-3">
-                                                    <span class="toggle-icon">˄</span>
-                                                </button>
+                                                <button type="button" class="lb-icon-btn toggle-task-body mr-2"><span class="toggle-icon">˄</span></button>
                                                 <div class="dropdown">
-                                                    <button class="btn btn-light three-dots-btn" type="button"
-                                                        data-bs-toggle="dropdown">
-                                                        ⋮
-                                                    </button>
-                                                    <ul class="dropdown-menu">
-                                                        <li><a class="dropdown-item rename-task-btn"
-                                                                href="javascript:void(0);"> <i
-                                                                    class="ki-duotone ki-pencil fs-2">
-                                                                    <span class="path1"></span>
-                                                                    <span class="path2"></span>
-                                                                </i> {{ __('Rename') }}</a>
-                                                        </li>
-                                                        <li><a class="dropdown-item remove-task" href="#">
-                                                                <i class="ki-duotone ki-trash fs-2">
-                                                                    <span class="path1"></span>
-                                                                    <span class="path2"></span>
-                                                                </i> {{ __('Remove Task') }}
-                                                            </a>
-                                                        </li>
+                                                    <button class="lb-icon-btn" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">⋮</button>
+                                                    <ul class="dropdown-menu dropdown-menu-right">
+                                                        <li><a class="dropdown-item rename-task-btn" href="javascript:void(0);"><i class="ni ni-ruler-pencil mr-2"></i> {{ __('Rename') }}</a></li>
+                                                        <li><a class="dropdown-item remove-task" href="#"><i class="ni ni-fat-remove mr-2"></i> {{ __('Remove Task') }}</a></li>
                                                     </ul>
                                                 </div>
                                             </div>
@@ -170,79 +190,36 @@
                                         </div>
                                         <input type="hidden" name="tasks[0][order]" class="task-order" value="0">
                                         <div class="card-footer text-center">
-                                            <button type="button" class="btn btn-primary add-task-btn"
-                                                style="font-size: 1.5rem; padding: 8px 16px; border-radius: 50%;">
-                                                +
-                                            </button>
+                                            <button type="button" class="add-task-btn">+</button>
                                         </div>
                                     </div>
                                 </div>
                             @else
                                 @foreach ($workflow->tasks as $index => $task)
-                                    <div class="task-item col-md-12 mb-10" data-index="{{ $index }}">
-                                        <input type="hidden" name="tasks[{{ $index }}][id]"
-                                            value="{{ $task->id }}">
+                                    <div class="task-item col-md-12 mb-3" data-index="{{ $index }}">
+                                        <input type="hidden" name="tasks[{{ $index }}][id]" value="{{ $task->id }}">
                                         <div class="card task-card">
-                                            <div
-                                                class="card-header d-flex align-items-center justify-content-between gap-4 py-4">
-                                                <i class="ki-duotone ki-abstract-20 drag-handle me-2 fs-2x text-gray-400">
-                                                    <span class="path1"></span>
-                                                    <span class="path2"></span>
-                                                </i>
+                                            <div class="card-header d-flex align-items-center justify-content-between gap-4 py-4">
+                                                <span class="drag-handle mr-3" style="cursor:grab; color:#94a3b8;"><i class="ni ni-bullet-list-67"></i></span>
                                                 <!-- LEFT SIDE -->
                                                 <div class="flex-grow-1">
-                                                    <label
-                                                        class="task-name-label fw-bold d-block mt-4 mb-2">{{ $task->task_name ?? 'Task Name' }}</label>
-                                                    <select name="tasks[{{ $index }}][task_type]"
-                                                        class="form-control task-type w-50 mb-2" required>
-                                                        <option value="">--Select Task--</option>
-                                                        <option value="create_contact"
-                                                            {{ $task->task_type == 'create_contact' ? 'selected' : '' }}>
-                                                            Create
-                                                            Contact
-                                                        </option>
-                                                        {{-- <option value="send_email"
-                                                        {{ $task->task_type == 'send_email' ? 'selected' : '' }}>Send Email
-                                                    </option>
-                                                    <option value="send_sms"
-                                                        {{ $task->task_type == 'send_sms' ? 'selected' : '' }}>
-                                                        Send SMS</option> --}}
-                                                        <option value="call_api"
-                                                            {{ $task->task_type == 'call_api' ? 'selected' : '' }}>
-                                                            Call API</option>
-                                                        <option value="send_whatsapp"
-                                                            {{ $task->task_type == 'send_whatsapp' ? 'selected' : '' }}>
-                                                            Send WhatsApp</option>
+                                                    <label class="task-name-label font-weight-bold d-block mt-2 mb-2">{{ $task->task_name ?? __('Task Name') }}</label>
+                                                    <select name="tasks[{{ $index }}][task_type]" class="form-control task-type w-50 mb-2" required>
+                                                        <option value="">--{{ __('Select Task') }}--</option>
+                                                        <option value="create_contact" {{ $task->task_type == 'create_contact' ? 'selected' : '' }}>{{ __('Create Contact') }}</option>
+                                                        <option value="call_api" {{ $task->task_type == 'call_api' ? 'selected' : '' }}>{{ __('Call API') }}</option>
+                                                        <option value="send_whatsapp" {{ $task->task_type == 'send_whatsapp' ? 'selected' : '' }}>{{ __('Send WhatsApp') }}</option>
                                                     </select>
-                                                    <input type="text" name="tasks[{{ $index }}][task_name]"
-                                                        class="form-control task-name mt-2 w-50 mb-2"
-                                                        placeholder="Enter Task Name" style="display: none;">
+                                                    <input type="text" name="tasks[{{ $index }}][task_name]" class="form-control task-name mt-2 w-50 mb-2" placeholder="{{ __('Enter Task Name') }}" style="display: none;">
                                                 </div>
                                                 <!-- RIGHT SIDE (Toggle & Three Dots) -->
                                                 <div class="d-flex align-items-center text-nowrap">
-                                                    <button class="btn btn-light toggle-task-body me-3">
-                                                        <span class="toggle-icon">˄</span>
-                                                    </button>
+                                                    <button type="button" class="lb-icon-btn toggle-task-body mr-2"><span class="toggle-icon">˄</span></button>
                                                     <div class="dropdown">
-                                                        <button class="btn btn-light three-dots-btn" type="button"
-                                                            data-bs-toggle="dropdown">
-                                                            ⋮
-                                                        </button>
-                                                        <ul class="dropdown-menu">
-                                                            <li><a class="dropdown-item rename-task-btn"
-                                                                    href="javascript:void(0);">
-                                                                    <i class="ki-duotone ki-pencil fs-2">
-                                                                        <span class="path1"></span>
-                                                                        <span class="path2"></span>
-                                                                    </i> {{ __('Rename') }}</a>
-                                                            </li>
-                                                            <li><a class="dropdown-item remove-task" href="#">
-                                                                    <i class="ki-duotone ki-trash fs-2">
-                                                                        <span class="path1"></span>
-                                                                        <span class="path2"></span>
-                                                                    </i> {{ __('Remove Task') }}
-                                                                </a>
-                                                            </li>
+                                                        <button class="lb-icon-btn" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">⋮</button>
+                                                        <ul class="dropdown-menu dropdown-menu-right">
+                                                            <li><a class="dropdown-item rename-task-btn" href="javascript:void(0);"><i class="ni ni-ruler-pencil mr-2"></i> {{ __('Rename') }}</a></li>
+                                                            <li><a class="dropdown-item remove-task" href="#"><i class="ni ni-fat-remove mr-2"></i> {{ __('Remove Task') }}</a></li>
                                                         </ul>
                                                     </div>
                                                 </div>
@@ -984,24 +961,141 @@
                                             <input type="hidden" name="tasks[{{ $index }}][order]"
                                                 class="task-order" value="{{ $index }}">
                                             <div class="card-footer text-center">
-                                                <button type="button" class="btn btn-primary add-task-btn"
-                                                    style="font-size: 1.5rem; padding: 8px 16px; border-radius: 50%;">
-                                                    +
-                                                </button>
+                                                <button type="button" class="add-task-btn">+</button>
                                             </div>
                                         </div>
                                     </div>
                                 @endforeach
                             @endif
                         </div>
-                        <button type="submit" class="floating-button" data-bs-toggle="tooltip" data-bs-placement="left"
-                            title="Update Workflow">
-                            <i class="fas fa-save"></i>
-                        </button>
                     </div>
-                </form>
-            </div>
-        @endsection
-        @section('js')
-            @include('work-flows::edit-script')
-        @endsection
+                </section>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('js')
+    @include('work-flows::edit-script')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var deleteBtn = document.getElementById('deleteWorkflowBtn');
+            var deleteForm = document.getElementById('workflow-delete-form');
+            if (deleteBtn && deleteForm) {
+                deleteBtn.addEventListener('click', function() {
+                    Swal.fire({
+                        title: "{{ __('Delete Workflow?') }}",
+                        text: "{{ __('This action cannot be undone.') }}",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: "{{ __('Yes, delete') }}",
+                        cancelButtonText: "{{ __('Cancel') }}",
+                        reverseButtons: true,
+                        customClass: { confirmButton: 'btn btn-danger', cancelButton: 'btn btn-light' },
+                        buttonsStyling: false
+                    }).then(function(result) { if (result.isConfirmed) deleteForm.submit(); });
+                });
+            }
+        });
+    </script>
+@endpush
+
+@push('js-late')
+<script>
+(function() {
+    var taskNames = { create_contact: "Task: Create Contact", send_email: "Task: Send Email", send_sms: "Task: Send SMS", call_api: "Task: Call API", send_whatsapp: "Task: Send WhatsApp" };
+
+    function getTaskFormUrl(taskType, index) {
+        var formEl = document.getElementById('workflow-form');
+        if (!formEl) return null;
+        var base = formEl.getAttribute('data-task-form-url');
+        if (!base) return null;
+        return base.replace('__TYPE__', encodeURIComponent(taskType)).replace('__INDEX__', encodeURIComponent(index));
+    }
+
+    function reinitFormElements(container) {
+        if (window._workflowInitFormElements && typeof window._workflowInitFormElements === 'function') {
+            setTimeout(window._workflowInitFormElements, 80);
+        } else if (window.jQuery) {
+            try { window.jQuery('select').not('.task-type').select2({ width: '100%' }); } catch(e) {}
+        }
+    }
+
+    function loadFormInto(selectEl) {
+        var taskType = (selectEl.value || '').trim();
+        var taskItem = selectEl.closest('.task-item');
+        if (!taskItem) return;
+        var container = taskItem.querySelector('.additional-fields') || taskItem.querySelector('.card-body');
+        if (!container) return;
+        var idx = taskItem.getAttribute('data-index') || '0';
+        var label = taskItem.querySelector('.task-name-label');
+        if (label && taskNames[taskType]) label.textContent = taskNames[taskType];
+        document.querySelectorAll('.task-item').forEach(function(item) {
+            var body = item.querySelector('.card-body.additional-fields') || item.querySelector('.additional-fields');
+            var icon = item.querySelector('.toggle-icon');
+            if (item === taskItem) {
+                if (body) body.style.display = '';
+                if (icon) icon.textContent = '\u02C4';
+            } else {
+                if (body) body.style.display = 'none';
+                if (icon) icon.textContent = '\u02C5';
+            }
+        });
+        if (taskType !== 'create_contact' && taskType !== 'call_api' && taskType !== 'send_whatsapp') {
+            container.innerHTML = '';
+            return;
+        }
+        var url = getTaskFormUrl(taskType, idx);
+        if (url) {
+            container.innerHTML = '<div class="text-muted py-3">Loading form…</div>';
+            fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    container.innerHTML = (data && data.html) ? data.html : '';
+                    reinitFormElements(container);
+                })
+                .catch(function() {
+                    container.innerHTML = '<div class="text-danger py-2">Could not load form. Please refresh the page.</div>';
+                });
+        } else {
+            var buildFn = window._buildWorkflowTaskFormSync || window._buildWorkflowTaskForm;
+            var html = (typeof buildFn === 'function') ? buildFn(taskType, idx) : '';
+            container.innerHTML = html || '';
+            reinitFormElements(container);
+        }
+    }
+
+    function onChange(e) {
+        var el = e.target;
+        if (!el || !el.classList || !el.classList.contains('task-type')) return;
+        loadFormInto(el);
+    }
+
+    function init() {
+        document.querySelectorAll('.task-type').forEach(function(sel) {
+            sel.removeEventListener('change', onChange);
+            sel.addEventListener('change', onChange);
+            try { if (window.jQuery && window.jQuery(sel).data('select2')) window.jQuery(sel).select2('destroy'); } catch(e) {}
+        });
+        document.querySelectorAll('.task-type').forEach(function(sel) {
+            var v = sel.value;
+            if (v && (v === 'create_contact' || v === 'call_api' || v === 'send_whatsapp')) {
+                var taskItem = sel.closest('.task-item');
+                var container = taskItem ? (taskItem.querySelector('.additional-fields') || taskItem.querySelector('.card-body')) : null;
+                if (container) {
+                    var cnt = container.querySelectorAll('.form-group, .form-check, select').length;
+                    if (cnt < 2) loadFormInto(sel);
+                }
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { setTimeout(init, 100); });
+    } else {
+        setTimeout(init, 100);
+    }
+})();
+</script>
+@endpush

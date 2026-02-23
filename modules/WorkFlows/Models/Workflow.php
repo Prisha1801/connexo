@@ -19,7 +19,7 @@ class Workflow extends Model
 
     public function tasks()
     {
-        return $this->hasMany(WorkflowTask::class);
+        return $this->hasMany(WorkflowTask::class)->orderBy('order');
     }
 
     protected static function booted()

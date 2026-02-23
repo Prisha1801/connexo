@@ -1,3 +1,50 @@
+<script>
+(function() {
+    var d = window.__workflowFormData || {};
+    var webhookVariables = d.mappedDataArray || [], groups = d.groups || [], contactFields = d.contactFields || [];
+    var whatsappCampaigns = d.whatsappCampaigns || [], autoretargetCampaigns = d.autoretargetCampaigns || [], agents = d.agents || [];
+    function genVarOpts() {
+        var o = '<option value="">-- Select Variable --</option>';
+        webhookVariables.forEach(function(i) { o += '<option value="' + (i.key||'') + '">' + (i.label||'') + '</option>'; });
+        return o;
+    }
+    function genAutoretarget() {
+        var o = '<option value="">-- Select an AutoRetarget Campaign --</option>';
+        autoretargetCampaigns.forEach(function(c) { o += '<option value="' + c.id + '">' + (c.name||'') + '</option>'; });
+        return o;
+    }
+    window._buildWorkflowTaskFormSync = function(taskType, index) {
+        var html = '', idx = index || '0', vopts = genVarOpts();
+        if (taskType === 'create_contact') {
+            var gopts = groups.map(function(g) { return '<option value="' + g.id + '">' + (g.name||'') + '</option>'; }).join('');
+            var cfopts = Object.keys(contactFields).map(function(id) { return '<option value="' + id + '">' + (contactFields[id]||'') + '</option>'; }).join('');
+            html = '<div class="form-group mb-4"><label>Phone</label><div class="row mb-2"><div class="col-md-6"><select class="form-control variable-selector" id="phoneVariableSelector' + idx + '">' + vopts + '</select></div><div class="col-md-6"><button type="button" class="insert-btn insert-variable-btn" data-target="phone' + idx + '"><i class="ni ni-fat-add mr-1"></i> Insert Variable</button></div></div><div class="phone-input-container"><input type="text" name="tasks[' + idx + '][task_config][phone]" id="phone' + idx + '" class="form-control" placeholder="Example: @{{country_code}}@{{phone_number}}"><div class="phone-preview" id="phonePreview' + idx + '">Phone number preview will appear here</div></div></div>';
+            html += '<div class="form-group mb-4"><label>Name</label><div class="row"><div class="col-md-6"><select class="form-control variable-selector" name="tasks[' + idx + '][task_config][name_variable]">' + vopts + '</select></div><div class="col-md-6"><div class="input-group"><span class="input-group-text">OR</span><input type="text" class="form-control" name="tasks[' + idx + '][task_config][name_static]" placeholder="Static name"></div></div></div></div>';
+            html += '<div class="row"><div class="col-md-6"><div class="form-group mb-4"><label>Add to Groups</label><select class="form-control groups-selector" name="tasks[' + idx + '][task_config][add_groups][]" multiple="multiple">' + gopts + '</select></div></div><div class="col-md-6"><div class="form-group mb-4"><label>Remove from Groups</label><select class="form-control groups-selector" name="tasks[' + idx + '][task_config][remove_groups][]" multiple="multiple">' + gopts + '</select></div></div></div>';
+            html += '<div class="form-group mb-4"><label>Tags</label><input type="text" class="form-control tags-input" name="tasks[' + idx + '][task_config][tags]" placeholder="Enter tags (comma separated)"></div>';
+            html += '<div class="form-group mb-4"><div class="form-check"><input class="form-check-input create-lead-checkbox" type="checkbox" id="createLead' + idx + '" name="tasks[' + idx + '][task_config][create_lead]" value="1"><label class="form-check-label" for="createLead' + idx + '">Create Lead</label></div></div>';
+            html += '<div class="form-group mb-4"><label>Assign Lead To</label><select class="form-control lead-agent-selector" name="tasks[' + idx + '][task_config][assign_to_user]"><option value="">-- Select Agent/User --</option>';
+            agents.forEach(function(a) { html += '<option value="' + a.id + '">' + (a.name||'') + '</option>'; });
+            html += '</select></div>';
+        } else if (taskType === 'send_whatsapp') {
+            var campopts = '<option value="">-- Select Campaign --</option>';
+            whatsappCampaigns.forEach(function(c) { campopts += '<option value="' + c.id + '">' + (c.name||'') + '</option>'; });
+            html = '<div class="form-group mb-4"><label>Send WhatsApp on:</label><div class="row mb-2"><div class="col-md-6"><select class="form-control variable-selector" id="waPhoneVariableSelector' + idx + '">' + vopts + '</select></div><div class="col-md-6"><button type="button" class="insert-btn insert-variable-btn" data-target="waPhone' + idx + '"><i class="ni ni-fat-add mr-1"></i> Insert Variable</button></div></div><div class="phone-input-container"><input type="text" name="tasks[' + idx + '][task_config][wa_phone]" id="waPhone' + idx + '" class="form-control" placeholder="Example: @{{country_code}}@{{phone_number}}"><div class="phone-preview" id="waPhonePreview' + idx + '">Phone number preview will appear here</div></div></div>';
+            html += '<div class="form-group mb-4"><label>Campaign</label><select class="form-control" name="tasks[' + idx + '][task_config][campaign_id]" required>' + campopts + '</select></div>';
+            html += '<div class="form-group mt-4"><label>Data to Pass (Payload)</label><div class="row mb-2"><div class="col-md-6"><select class="form-control variable-selector" id="payloadWAVariableSelector' + idx + '">' + vopts.replace('-- Select Variable --','-- Select Variable to Insert --') + '</select></div><div class="col-md-6"><button type="button" class="insert-btn insert-variable-btn" data-target="payloadWA' + idx + '"><i class="ni ni-fat-add mr-1"></i> Insert Variable</button></div></div><textarea name="tasks[' + idx + '][task_config][wa_payload]" id="payloadWA' + idx + '" class="form-control" rows="4"></textarea></div>';
+            html += '<div class="mt-5 mb-4"><label class="form-check form-switch"><input class="form-check-input" type="checkbox" name="tasks[' + idx + '][task_config][autoretarget_enabled]" id="autoretarget_enabled_' + idx + '" value="1"><span class="form-check-label">Enable AutoRetarget</span></label></div><div id="autoretarget_section_' + idx + '" style="display:none;"><div class="mb-5"><label>AutoRetarget Campaign</label><select class="form-select" id="autoretarget_campaign_id_' + idx + '" name="tasks[' + idx + '][task_config][autoretarget_campaign_id]">' + genAutoretarget() + '</select></div></div>';
+        } else if (taskType === 'call_api') {
+            html = '<div class="form-group mb-4"><label>API URL</label><div class="row mb-2"><div class="col-md-6"><select class="form-control variable-selector" id="urlVariableSelector' + idx + '">' + vopts.replace('-- Select Variable --','-- Select Variable to Insert --') + '</select></div><div class="col-md-6"><button type="button" class="insert-btn insert-variable-btn" data-target="url' + idx + '"><i class="ni ni-fat-add mr-1"></i> Insert Variable</button></div></div><div class="url-input-container"><input type="text" class="form-control" name="tasks[' + idx + '][task_config][url]" id="url' + idx + '" placeholder="https://api.example.com"><div class="url-preview" id="urlPreview' + idx + '">URL preview</div></div></div>';
+            html += '<div class="form-group mb-4"><label>HTTP Method</label><select class="form-control" name="tasks[' + idx + '][task_config][http_method]"><option value="GET">GET</option><option value="POST" selected>POST</option><option value="PUT">PUT</option><option value="PATCH">PATCH</option><option value="DELETE">DELETE</option></select></div>';
+            html += '<div class="form-group mb-4"><label>Authentication</label><select class="form-control api-auth-type" name="tasks[' + idx + '][task_config][auth_type]"><option value="none">No Authentication</option><option value="basic">Basic</option><option value="bearer">Bearer Token</option></select></div>';
+            html += '<div class="form-group mb-4"><div class="form-check"><input class="form-check-input" type="checkbox" id="addHeadersCheckbox' + idx + '" name="tasks[' + idx + '][task_config][add_headers]" value="1"><label class="form-check-label">Add Headers</label></div></div>';
+            html += '<div class="form-group mb-4"><div class="form-check"><input class="form-check-input" type="checkbox" id="addParamsCheckbox' + idx + '" name="tasks[' + idx + '][task_config][add_params]" value="1"><label class="form-check-label">Set Parameters</label></div></div>';
+            html += '<div class="form-group"><label>Data to Pass (Payload)</label><textarea name="tasks[' + idx + '][task_config][data]" id="payload' + idx + '" class="form-control" rows="4"></textarea></div>';
+        }
+        return html;
+    };
+})();
+</script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.min.js"></script>
@@ -7,8 +54,8 @@
     $(document).ready(function() {
         // Initialize all form elements after a small delay
         function initFormElements() {
-            // Initialize Select2
-            $('select').select2({
+            // Initialize Select2 - exclude task-type so native change fires and form loads
+            $('select').not('.task-type').select2({
                 width: '100%',
             });
 
@@ -55,6 +102,7 @@
         let hasWebhookUrl = {{ $workflow->app_id == 'webhook' ? 'true' : 'false' }};
         // Global index for tasks
         let taskIndex = {{ $workflow->tasks->count() }};
+        window._workflowTaskIndex = taskIndex;
 
         // Function to generate variable options
         function generateVariableOptions() {
@@ -100,9 +148,7 @@
    </div>`;
 
             container.append(newRow);
-            $('select').select2({
-                width: '100%',
-            });
+            $('select').not('.task-type').select2({ width: '100%' });
         });
 
         // Show/hide custom fields section
@@ -155,9 +201,7 @@
 </div>`;
 
             container.append(newRow);
-            $('select').select2({
-                width: '100%'
-            });
+            $('select').not('.task-type').select2({ width: '100%' });
         });
 
         // Remove custom field
@@ -198,9 +242,7 @@
    </div>`;
 
             container.append(newRow);
-            $('select').select2({
-                width: '100%',
-            });
+            $('select').not('.task-type').select2({ width: '100%' });
         });
 
         // Remove header row with protection for last item
@@ -229,11 +271,11 @@
         function focusTask(taskItem) {
             // Collapse all other tasks
             $(".task-item").not(taskItem).each(function() {
-                $(this).find(".card-body").slideUp();
+                $(this).find(".card-body.additional-fields").slideUp();
                 $(this).find(".toggle-icon").text("˅");
             });
             // Expand the current task
-            taskItem.find(".card-body").slideDown();
+            taskItem.find(".card-body.additional-fields").slideDown();
             taskItem.find(".toggle-icon").text("˄");
         }
 
@@ -319,16 +361,10 @@
             "send_whatsapp": "Task: Send WhatsApp"
         };
 
-        $(document).on("change", ".task-type", function() {
-            let taskItem = $(this).closest(".task-item");
-            let selectedValue = $(this).val();
-            let taskLabel = $(this).closest(".task-item").find(".task-name-label");
-
-            if (selectedValue in taskNames) {
-                taskLabel.text(taskNames[selectedValue]);
-            }
-            focusTask(taskItem);
-        });
+        // Expose for vanilla task-type handler (survives jQuery reload)
+        window._workflowTaskNames = taskNames;
+        window._workflowFocusTask = function(el) { if (window.jQuery && el) focusTask($(el)); };
+        window._workflowInitFormElements = function() { initFormElements(); };
 
         $(document).on("click", ".rename-task-btn", function() {
             let taskItem = $(this).closest(".task-item");
@@ -343,7 +379,8 @@
 
         $(document).on("blur", ".task-name", function() {
             let taskInput = $(this);
-            let taskLabel = taskInput.siblings(".task-name-label");
+            let taskItem = taskInput.closest(".task-item");
+            let taskLabel = taskItem.find(".task-name-label");
 
             if (taskInput.val().trim() !== "") {
                 taskLabel.text(taskInput.val().trim());
@@ -351,85 +388,9 @@
 
             taskInput.hide();
             taskLabel.show();
-            focusTask(taskItem);
         });
 
-        $(document).on("click", ".add-task-btn", function() {
-            let parentTask = $(this).closest(".task-item");
-
-            let newTaskHTML = `
-
-                       <div class="task-item col-md-12 mb-10" data-index="${taskIndex}">
-                                        <div class="card task-card">
-                                            <div class="card-header d-flex align-items-center justify-content-between gap-4 py-4">
-                                                <i class="ki-duotone ki-abstract-20 drag-handle me-2 fs-2x text-gray-400">
-                                                    <span class="path1"></span>
-                                                    <span class="path2"></span>
-                                                </i>
-
-   <!-- LEFT SIDE -->
-   <div class="flex-grow-1">
-       <label class="task-name-label fw-bold d-block mt-4 mb-2">Task Name</label>
-       <select name="tasks[${taskIndex}][task_type]" class="form-control task-type w-50 mb-4" required>
-           <option value="">--Select Task--</option>
-           <option value="create_contact">Create Contact</option>
-           <option value="call_api">Call API</option>
-           <option value="send_whatsapp">Send WhatsApp</option>
-       </select>
-       <input type="text" name="tasks[${taskIndex}][task_name]" class="form-control task-name mt-2 w-50 mb-2"
-           placeholder="Enter Task Name" style="display: none;">
-   </div>
-   
-   <!-- RIGHT SIDE (Keep in single row) -->
-   <div class="d-flex align-items-center text-nowrap">
-       <button class="btn btn-light toggle-task-body me-2">
-           <span class="toggle-icon">˄</span>
-       </button>
-   
-       <div class="dropdown">
-           <button class="btn btn-light three-dots-btn" type="button" data-bs-toggle="dropdown">
-               ⋮
-           </button>
-           <ul class="dropdown-menu">
-               <li><a class="dropdown-item rename-task-btn" href="javascript:void(0);">
-                   <i class="ki-duotone ki-pencil fs-2"><span class="path1"></span><span class="path2"></span>
-                       </i> {{ __('Rename') }}</a></li>
-               <li><a class="dropdown-item remove-task" href="#">
-                   <i class="ki-duotone ki-trash fs-2"><span class="path1"></span><span class="path2"></span>
-                   </i> {{ __('Remove Task') }}</a></li>
-           </ul>
-       </div>
-   </div>
-   </div>
-   
-   <div class="card-body additional-fields">
-   <!-- Additional fields go here -->
-   </div>
-   
-   <input type="hidden" name="tasks[${taskIndex}][order]" class="task-order" value="${taskIndex}">
-   
-   <div class="card-footer text-center">
-   <button type="button" class="btn btn-primary add-task-btn"
-       style="font-size: 1.5rem; padding: 8px 16px; border-radius: 50%;">
-       +
-   </button>
-   </div>
-   </div>
-   </div>
-   `;
-
-            parentTask.after(newTaskHTML);
-
-            $(".task-item .card-body").slideUp();
-            $(".task-item .toggle-icon").text("˅");
-
-            parentTask.next().find(".card-body").slideDown();
-            parentTask.next().find(".toggle-icon").text("˄");
-
-            focusTask(parentTask.next());
-
-            taskIndex++;
-        });
+        {{-- Add-task handler moved to vanilla JS at end of file (jQuery may be reloaded by layout) --}}
 
         $(document).on("click", ".remove-task-btn", function() {
             let currentTask = $(this).closest(".task-item");
@@ -441,67 +402,15 @@
             }
         });
 
-        $(document).on("click", ".toggle-task-body", function(event) {
-            event.preventDefault();
-            let taskBody = $(this).closest(".task-item").find(".card-body");
-            let icon = $(this).find(".toggle-icon");
+        {{-- Toggle handler moved to vanilla JS at end of file for reliability (jQuery may be reloaded by layout) --}}
 
-            if (taskBody.is(":visible")) {
-                taskBody.slideUp();
-                icon.text("˅");
-            } else {
-                $(".task-item .card-body").slideUp();
-                $(".task-item .toggle-icon").text("˅");
-
-                taskBody.slideDown();
-                icon.text("˄");
-            }
-        });
-
-        $(".task-item:first .card-body").show();
+        $(".task-item:first .card-body.additional-fields").show();
         $(".task-item:first .toggle-icon").text("˄");
 
-        $(document).on('click', '.remove-task', function() {
-            if ($('#tasks-container .task-item').length === 1) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Cannot Delete',
-                    text: 'You must have at least one task defined.',
-                });
-                return;
-            }
+        {{-- Remove-task handler moved to vanilla JS at end of file (jQuery may be reloaded by layout) --}}
 
-            let taskCard = $(this).closest('.task-item');
-            let hasValue = taskCard.find('input, textarea, select').filter(function() {
-                return $(this).val().trim() !== '';
-            }).length > 0;
-
-            if (hasValue) {
-                Swal.fire({
-                    title: 'Are you sure?',
-                    text: 'This task contains values. Do you want to delete it?',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Yes, delete it!'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        taskCard.remove();
-                        updateTaskOrder();
-                    }
-                });
-            } else {
-                taskCard.remove();
-                updateTaskOrder();
-            }
-        });
-
-        // Delegate change event for .task-type to load additional fields.
-        $(document).on('change', '.task-type', function() {
-            let taskType = $(this).val();
-            let container = $(this).closest('.task-item').find('.additional-fields');
-            let index = $(this).closest('.task-item').attr('data-index');
+        // Build form HTML for given task type - extracted for reuse by vanilla handler
+        function buildTaskFormHtml(taskType, index) {
             let html = '';
             if (taskType === 'create_contact') {
                 // Generate group options
@@ -524,8 +433,8 @@
             </select>
         </div>
         <div class="col-md-6">
-            <button type="button" class="btn btn-secondary insert-variable-btn" data-target="phone${index}">
-                <i class="fas fa-plus-circle me-1"></i> Insert Variable
+            <button type="button" class="insert-btn insert-variable-btn" data-target="phone${index}">
+                <i class="ni ni-fat-add mr-1"></i> Insert Variable
             </button>
         </div>
     </div>
@@ -681,8 +590,8 @@
            </select>
        </div>
        <div class="col-md-6">
-           <button type="button" class="btn btn-secondary insert-variable-btn" data-target="waPhone${index}">
-               <i class="fas fa-plus-circle me-1"></i> Insert Variable
+           <button type="button" class="insert-btn insert-variable-btn" data-target="waPhone${index}">
+               <i class="ni ni-fat-add mr-1"></i> Insert Variable
            </button>
        </div>
    </div>
@@ -718,7 +627,7 @@
            </select>
        </div>
        <div class="col-md-6">
-           <button type="button" class="btn btn-secondary insert-variable-btn" data-target="payloadWA${index}"><i class="fas fa-plus-circle me-1"></i> Insert Variable</button>
+           <button type="button" class="insert-btn insert-variable-btn" data-target="payloadWA${index}"><i class="ni ni-fat-add mr-1"></i> Insert Variable</button>
        </div>
    </div>
    <textarea name="tasks[${index}][task_config][wa_payload]" 
@@ -790,8 +699,8 @@
             </select>
         </div>
         <div class="col-md-6">
-            <button type="button" class="btn btn-secondary insert-variable-btn" data-target="url${index}">
-                <i class="fas fa-plus-circle me-1"></i> Insert Variable
+            <button type="button" class="insert-btn insert-variable-btn" data-target="url${index}">
+                <i class="ni ni-fat-add mr-1"></i> Insert Variable
             </button>
         </div>
     </div>
@@ -975,7 +884,7 @@
             </select>
         </div>
         <div class="col-md-6">
-            <button type="button" class="btn btn-secondary insert-variable-btn" data-target="payload${index}"><i class="fas fa-plus-circle me-1"></i> Insert Variable</button>
+            <button type="button" class="insert-btn insert-variable-btn" data-target="payload${index}"><i class="ni ni-fat-add mr-1"></i> Insert Variable</button>
         </div>
     </div>
     <textarea name="tasks[${index}][task_config][data]" 
@@ -988,10 +897,36 @@
 } else {
                 html = '';
             }
+            return html;
+        }
+        window._buildWorkflowTaskForm = buildTaskFormHtml;
 
-            container.html(html);
-            // Reinitialize form elements after loading new content
+        // jQuery task-type handler - primary, uses closure's buildTaskFormHtml
+        $(document).on('change select2:select', '.task-type', function() {
+            var taskType = $(this).val();
+            var taskItem = $(this).closest('.task-item');
+            var container = taskItem.find('.additional-fields');
+            var index = taskItem.attr('data-index') || '0';
+            var taskLabel = taskItem.find('.task-name-label');
+            if (taskType && taskNames[taskType]) taskLabel.text(taskNames[taskType]);
+            focusTask(taskItem);
+            container.html(buildTaskFormHtml(taskType, index));
             setTimeout(initFormElements, 100);
+        });
+
+        // Trigger form load for any task that already has a selection (e.g. server-rendered but form missing)
+        $('.task-type').each(function() {
+            var v = $(this).val();
+            if (v && (v === 'create_contact' || v === 'call_api' || v === 'send_whatsapp')) {
+                var taskItem = $(this).closest('.task-item');
+                var container = taskItem.find('.additional-fields');
+                var hasForm = container.find('.form-group, .form-check, input[type="text"], select').length > 1;
+                if (!hasForm) {
+                    var index = taskItem.attr('data-index') || '0';
+                    container.html(buildTaskFormHtml(v, index));
+                    setTimeout(initFormElements, 100);
+                }
+            }
         });
 
         $(document).on('click', '.insert-variable-btn', function() {
@@ -1080,159 +1015,7 @@
             });
         });
 
-        // Minimize/Maximize Response Table
-        $('#toggleResponseView').click(function(event) {
-            event.preventDefault();
-            let responseContainer = $('#responseContainer');
-            let button = $(this);
-
-            if (responseContainer.is(':visible')) {
-                responseContainer.slideUp();
-                $('#toggleIcon').html('&lt;');
-            } else {
-                responseContainer.slideDown();
-                $('#toggleIcon').html('&gt;');
-            }
-        });
-
-        $('#captureWebhookResponse').click(function(event) {
-            event.preventDefault();
-            let workflowId = {{ $workflow->id }};
-            let button = $(this);
-            button.text('Processing...').prop('disabled', true);
-
-            $.ajax({
-                url: `/workflow-webhooks/${workflowId}`,
-                type: 'GET',
-                success: function(response) {
-                    button.text('Capture Webhook Response').prop('disabled', false);
-
-                    if (Array.isArray(response)) {
-                        // Convert to Re-capture button
-                        $('#captureWebhookResponse').hide();
-                        $('#recaptureWebhookResponse').show();
-
-                        // Existing response handling
-                        let formHtml = `
-           <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px;">
-               <div class="row">`;
-
-                        response.forEach(item => {
-                            formHtml += `
-               <div class="col-md-6 mb-2">
-                   <input type="text" class="form-control font-weight-bold" value="${item.label}" readonly>
-               </div>
-               <div class="col-md-6 mb-2">
-                   <input type="text" class="form-control font-weight-bold" value="${item.value}" readonly>
-               </div>`;
-                        });
-
-                        formHtml += `</div></div>`;
-                        $('#webhookResponse').html(formHtml);
-                        $('#responseContainer').slideDown();
-                        $('#toggleIcon').html('&gt;');
-
-                        // Show success alert
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: 'Webhook response captured successfully',
-                            timer: 2000
-                        });
-                    } else {
-                        // Show error alert for no response
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'No Response',
-                            text: response.message ||
-                                'No webhook response available'
-                        });
-                    }
-                },
-                error: function(xhr) {
-                    button.text('Capture Webhook Response').prop('disabled', false);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: xhr.responseJSON?.message ||
-                            'Failed to capture webhook response'
-                    });
-                }
-            });
-        });
-
-        $('#recaptureWebhookResponse').on('click', function(event) {
-            event.preventDefault();
-            let workflowId = {{ $workflow->id }};
-            let button = $(this);
-
-            Swal.fire({
-                title: 'Re-Capture Webhook Response?',
-                text: "This will fetch the latest response and might override existing mappings",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Yes, re-capture!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    button.text('Processing...').prop('disabled', true);
-
-                    $.ajax({
-                        url: `/workflow-webhooks/${workflowId}`,
-                        type: 'GET',
-                        success: function(response) {
-                            button.text('Re-Capture Webhook Response').prop(
-                                'disabled', false);
-
-                            if (Array.isArray(response)) {
-                                // Update UI and show success
-                                let formHtml = `
-           <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px;">
-               <div class="row">`;
-
-                                response.forEach(item => {
-                                    formHtml += `
-               <div class="col-md-6 mb-2">
-                   <input type="text" class="form-control font-weight-bold" value="${item.label}" readonly>
-               </div>
-               <div class="col-md-6 mb-2">
-                   <input type="text" class="form-control font-weight-bold" value="${item.value}" readonly>
-               </div>`;
-                                });
-
-                                formHtml += `</div></div>`;
-                                $('#webhookResponse').html(formHtml);
-
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Updated!',
-                                    text: 'Response re-captured successfully',
-                                    timer: 1500
-                                });
-                            } else {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'No Changes',
-                                    text: response.message ||
-                                        'No new response available'
-                                });
-                            }
-                        },
-                        error: function(xhr) {
-                            button.text('Re-Capture Webhook Response').prop(
-                                'disabled', false);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error!',
-                                text: xhr.responseJSON?.message ||
-                                    'Failed to re-capture response'
-                            });
-                        }
-                    });
-                }
-            });
-        });
+        // Webhook capture/recapture/toggle moved to vanilla JS IIFE ( survives jQuery reload )
     });
 </script>
 <script>
@@ -1418,4 +1201,359 @@ function updateUrlPreview(inputId) {
     $(document).on('change', '[id^="addParamsCheckbox"]', function() {
         $(this).closest('.form-group').next('.params-container').toggle(this.checked);
     });
+</script>
+{{-- Vanilla JS fallback for toggle and add-task buttons - works even if jQuery is reloaded after @stack('js') --}}
+<script>
+(function() {
+    var initialTaskCount = {{ $workflow->tasks->count() }};
+
+    function getNextTaskIndex() {
+        var idx = window._workflowTaskIndex;
+        if (typeof idx === 'number') return idx;
+        var items = document.querySelectorAll('#tasks-container .task-item');
+        return items.length;
+    }
+
+    function updateTaskOrderVanilla() {
+        var container = document.getElementById('tasks-container');
+        if (!container) return;
+        var items = container.querySelectorAll('.task-item');
+        items.forEach(function(item, index) {
+            item.setAttribute('data-index', index);
+            var orderInput = item.querySelector('.task-order');
+            if (orderInput) {
+                orderInput.value = index;
+                orderInput.setAttribute('name', 'tasks[' + index + '][order]');
+            }
+            var taskTypeSelect = item.querySelector('select.task-type');
+            if (taskTypeSelect) taskTypeSelect.setAttribute('name', 'tasks[' + index + '][task_type]');
+            var additionalFields = item.querySelector('.additional-fields');
+            if (additionalFields) {
+                additionalFields.querySelectorAll('input, textarea, select').forEach(function(el) {
+                    var name = el.getAttribute('name');
+                    if (name) el.setAttribute('name', name.replace(/tasks\[\d+\]/, 'tasks[' + index + ']'));
+                });
+            }
+        });
+        window._workflowTaskIndex = items.length;
+    }
+
+    function handleAddTaskClick(e) {
+        var btn = e.target.closest('.add-task-btn');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var parentTask = btn.closest('.task-item');
+        if (!parentTask) return;
+        var taskIndex = getNextTaskIndex();
+        var newTaskHTML = '<div class="task-item col-md-12 mb-3" data-index="' + taskIndex + '">' +
+            '<div class="card task-card">' +
+            '<div class="card-header d-flex align-items-center justify-content-between gap-4 py-4">' +
+            '<span class="drag-handle mr-3" style="cursor:grab; color:#94a3b8;"><i class="ni ni-bullet-list-67"></i></span>' +
+            '<div class="flex-grow-1">' +
+            '<label class="task-name-label font-weight-bold d-block mt-2 mb-2">Task Name</label>' +
+            '<select name="tasks[' + taskIndex + '][task_type]" class="form-control task-type w-50 mb-2" required>' +
+            '<option value="">--Select Task--</option>' +
+            '<option value="create_contact">Create Contact</option>' +
+            '<option value="call_api">Call API</option>' +
+            '<option value="send_whatsapp">Send WhatsApp</option>' +
+            '</select>' +
+            '<input type="text" name="tasks[' + taskIndex + '][task_name]" class="form-control task-name mt-2 w-50 mb-2" placeholder="Enter Task Name" style="display: none;">' +
+            '</div>' +
+            '<div class="d-flex align-items-center text-nowrap">' +
+            '<button type="button" class="lb-icon-btn toggle-task-body mr-2"><span class="toggle-icon">\u02C5</span></button>' +
+            '<div class="dropdown">' +
+            '<button class="lb-icon-btn" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">\u22EE</button>' +
+            '<ul class="dropdown-menu dropdown-menu-right">' +
+            '<li><a class="dropdown-item rename-task-btn" href="javascript:void(0);"><i class="ni ni-ruler-pencil mr-2"></i> Rename</a></li>' +
+            '<li><a class="dropdown-item remove-task" href="#"><i class="ni ni-fat-remove mr-2"></i> Remove Task</a></li>' +
+            '</ul></div></div></div>' +
+            '<div class="card-body additional-fields" style="display:none;"><input type="hidden" name="tasks[' + taskIndex + '][task_config][]" value=""></div>' +
+            '<input type="hidden" name="tasks[' + taskIndex + '][order]" class="task-order" value="' + taskIndex + '">' +
+            '<div class="card-footer text-center">' +
+            '<button type="button" class="add-task-btn">+</button>' +
+            '</div></div></div>';
+        var div = document.createElement('div');
+        div.innerHTML = newTaskHTML.trim();
+        var newTask = div.firstChild;
+        parentTask.parentNode.insertBefore(newTask, parentTask.nextSibling);
+        document.querySelectorAll('.task-item .card-body.additional-fields').forEach(function(el) { el.style.display = 'none'; });
+        document.querySelectorAll('.task-item .toggle-icon').forEach(function(el) { el.textContent = '\u02C5'; });
+        updateTaskOrderVanilla();
+        if (window.jQuery && window.jQuery.fn.sortable) {
+            try { window.jQuery('#tasks-container').sortable('refresh'); } catch (err) {}
+        }
+        if (window.jQuery) {
+            try {
+                window.jQuery(newTask).find('select').not('.task-type').select2({ width: '100%' });
+            } catch (err) {}
+        }
+    }
+
+    function handleToggleClick(e) {
+        var btn = e.target.closest('.toggle-task-body');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var taskItem = btn.closest('.task-item');
+        if (!taskItem) return;
+        var taskBody = taskItem.querySelector('.card-body.additional-fields');
+        if (!taskBody) return;
+        var icon = btn.querySelector('.toggle-icon');
+        var isVisible = taskBody.offsetParent !== null && getComputedStyle(taskBody).display !== 'none';
+        if (isVisible) {
+            taskBody.style.display = 'none';
+            if (icon) icon.textContent = '\u02C5';
+        } else {
+            document.querySelectorAll('.task-item .card-body.additional-fields').forEach(function(el) { el.style.display = 'none'; });
+            document.querySelectorAll('.task-item .toggle-icon').forEach(function(el) { el.textContent = '\u02C5'; });
+            taskBody.style.display = 'block';
+            if (icon) icon.textContent = '\u02C4';
+        }
+    }
+
+    function handleTaskTypeChange(e) {
+        var select = e.target;
+        if (!select || !select.classList || !select.classList.contains('task-type')) return;
+        var taskItem = select.closest('.task-item');
+        if (!taskItem) return;
+        var container = taskItem.querySelector('.additional-fields');
+        if (!container) return;
+        var taskType = select.value || '';
+        var index = taskItem.getAttribute('data-index') || '0';
+        var taskLabel = taskItem.querySelector('.task-name-label');
+        var taskNames = window._workflowTaskNames;
+        if (taskType && taskNames && taskNames[taskType] && taskLabel) {
+            taskLabel.textContent = taskNames[taskType];
+        }
+        document.querySelectorAll('.task-item').forEach(function(item) {
+            var body = item.querySelector('.card-body.additional-fields');
+            var icon = item.querySelector('.toggle-icon');
+            if (item === taskItem) {
+                if (body) body.style.display = 'block';
+                if (icon) icon.textContent = '\u02C4';
+            } else {
+                if (body) body.style.display = 'none';
+                if (icon) icon.textContent = '\u02C5';
+            }
+        });
+        var buildFn = window._buildWorkflowTaskForm;
+        var html = (buildFn && typeof buildFn === 'function') ? buildFn(taskType, index) : '';
+        container.innerHTML = html;
+        var initFn = window._workflowInitFormElements;
+        if (initFn && typeof initFn === 'function') {
+            setTimeout(initFn, 100);
+        }
+    }
+
+    function handleRemoveTaskClick(e) {
+        var link = e.target.closest('.remove-task');
+        if (!link) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var container = document.getElementById('tasks-container');
+        if (!container) return;
+        var tasks = container.querySelectorAll('.task-item');
+        if (tasks.length <= 1) {
+            if (window.Swal) {
+                window.Swal.fire({ icon: 'warning', title: 'Cannot Delete', text: 'You must have at least one task defined.' });
+            } else {
+                alert('You must have at least one task defined.');
+            }
+            return;
+        }
+        var taskCard = link.closest('.task-item');
+        if (!taskCard) return;
+        var hasValue = false;
+        taskCard.querySelectorAll('input, textarea, select').forEach(function(el) {
+            var v = (el.value || '').trim();
+            if (el.type === 'checkbox' && el.checked) v = '1';
+            if (v !== '') hasValue = true;
+        });
+        function doRemove() {
+            taskCard.remove();
+            updateTaskOrderVanilla();
+            if (window.jQuery && window.jQuery.fn.sortable) {
+                try { window.jQuery('#tasks-container').sortable('refresh'); } catch (err) {}
+            }
+        }
+        if (hasValue && window.Swal) {
+            window.Swal.fire({
+                title: 'Are you sure?',
+                text: 'This task contains values. Do you want to delete it?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, delete it!'
+            }).then(function(result) { if (result.isConfirmed) doRemove(); });
+        } else if (hasValue && confirm('This task contains values. Do you want to delete it?')) {
+            doRemove();
+        } else if (!hasValue) {
+            doRemove();
+        }
+    }
+
+    function init() {
+        document.removeEventListener('click', handleToggleClick);
+        document.removeEventListener('click', handleAddTaskClick);
+        document.removeEventListener('click', handleRemoveTaskClick);
+        document.removeEventListener('change', handleTaskTypeChange);
+        document.addEventListener('click', handleToggleClick);
+        document.addEventListener('click', handleAddTaskClick);
+        document.addEventListener('click', handleRemoveTaskClick);
+        document.addEventListener('change', handleTaskTypeChange);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+{{-- Vanilla JS webhook capture/recapture/toggle - survives jQuery reload --}}
+<script>
+(function() {
+    function toggleResponseView(e) {
+        var el = e.target.closest('#toggleResponseView');
+        if (!el) return;
+        e.preventDefault();
+        var container = document.getElementById('responseContainer');
+        var icon = document.getElementById('toggleIcon');
+        if (!container || !icon) return;
+        var isVisible = container.offsetParent !== null && getComputedStyle(container).display !== 'none';
+        if (isVisible) {
+            container.style.display = 'none';
+            icon.innerHTML = '&lt;';
+        } else {
+            container.style.display = 'block';
+            icon.innerHTML = '&gt;';
+        }
+    }
+
+    function renderWebhookResponse(data) {
+        var wrapper = document.getElementById('webhookResponse');
+        if (!wrapper) return;
+        var existing = document.getElementById('alreadyExistsWebhookResponse');
+        if (existing) existing.style.display = 'none';
+        var html = '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px;"><div class="row">';
+        data.forEach(function(item) {
+            var lbl = (item.label || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+            var val = (item.value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+            html += '<div class="col-md-6 mb-2"><input type="text" class="form-control font-weight-bold" value="' + lbl + '" readonly></div>';
+            html += '<div class="col-md-6 mb-2"><input type="text" class="form-control font-weight-bold" value="' + val + '" readonly></div>';
+        });
+        html += '</div></div>';
+        wrapper.innerHTML = html;
+    }
+
+    function onCaptureSuccess(button) {
+        var captureBtn = document.getElementById('captureWebhookResponse');
+        var recaptureBtn = document.getElementById('recaptureWebhookResponse');
+        var toggleSpan = document.getElementById('toggleResponseView');
+        var container = document.getElementById('responseContainer');
+        var icon = document.getElementById('toggleIcon');
+        if (captureBtn) captureBtn.style.display = 'none';
+        if (recaptureBtn) recaptureBtn.style.display = '';
+        if (toggleSpan) toggleSpan.style.display = 'inline-block';
+        if (container) container.style.display = 'block';
+        if (icon) icon.innerHTML = '&gt;';
+        if (button) { button.textContent = 'Capture Webhook Response'; button.disabled = false; }
+    }
+
+    function onRecaptureSuccess(button) {
+        if (button) { button.textContent = 'Re-Capture Webhook Response'; button.disabled = false; }
+    }
+
+    function handleCaptureClick(e) {
+        var btn = e.target.closest('#captureWebhookResponse');
+        if (!btn) return;
+        e.preventDefault();
+        var url = btn.getAttribute('data-fetch-url');
+        if (!url) return;
+        btn.textContent = 'Processing...';
+        btn.disabled = true;
+        fetch(url, { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.ok ? r.json() : r.json().then(function(j) { throw j; }); })
+            .then(function(response) {
+                if (Array.isArray(response)) {
+                    renderWebhookResponse(response);
+                    onCaptureSuccess(btn);
+                    if (window.Swal) window.Swal.fire({ icon: 'success', title: 'Success!', text: 'Webhook response captured successfully', timer: 2000 });
+                } else {
+                    btn.textContent = 'Capture Webhook Response';
+                    btn.disabled = false;
+                    if (window.Swal) window.Swal.fire({ icon: 'error', title: 'No Response', text: response.message || 'No webhook response available' });
+                }
+            })
+            .catch(function(err) {
+                btn.textContent = 'Capture Webhook Response';
+                btn.disabled = false;
+                var msg = (err && err.message) ? err.message : 'Failed to capture webhook response';
+                if (window.Swal) window.Swal.fire({ icon: 'error', title: 'Error!', text: msg });
+            });
+    }
+
+    function handleRecaptureClick(e) {
+        var btn = e.target.closest('#recaptureWebhookResponse');
+        if (!btn) return;
+        e.preventDefault();
+        var url = btn.getAttribute('data-fetch-url');
+        if (!url) return;
+        if (window.Swal) {
+            window.Swal.fire({
+                title: 'Re-Capture Webhook Response?',
+                text: 'This will fetch the latest response and might override existing mappings',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, re-capture!'
+            }).then(function(result) {
+                if (result.isConfirmed) doRecapture(btn, url);
+            });
+        } else {
+            if (confirm('Re-capture webhook response?')) doRecapture(btn, url);
+        }
+    }
+
+    function doRecapture(btn, url) {
+        btn.textContent = 'Processing...';
+        btn.disabled = true;
+        fetch(url, { method: 'GET', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.ok ? r.json() : r.json().then(function(j) { throw j; }); })
+            .then(function(response) {
+                if (Array.isArray(response)) {
+                    renderWebhookResponse(response);
+                    onRecaptureSuccess(btn);
+                    if (window.Swal) window.Swal.fire({ icon: 'success', title: 'Updated!', text: 'Response re-captured successfully', timer: 1500 });
+                } else {
+                    onRecaptureSuccess(btn);
+                    if (window.Swal) window.Swal.fire({ icon: 'error', title: 'No Changes', text: response.message || 'No new response available' });
+                }
+            })
+            .catch(function(err) {
+                onRecaptureSuccess(btn);
+                var msg = (err && err.message) ? err.message : 'Failed to re-capture response';
+                if (window.Swal) window.Swal.fire({ icon: 'error', title: 'Error!', text: msg });
+            });
+    }
+
+    function init() {
+        var toggleEl = document.getElementById('toggleResponseView');
+        if (toggleEl) {
+            toggleEl.removeEventListener('click', toggleResponseView);
+            toggleEl.addEventListener('click', toggleResponseView);
+        }
+        document.removeEventListener('click', handleCaptureClick);
+        document.removeEventListener('click', handleRecaptureClick);
+        document.addEventListener('click', handleCaptureClick);
+        document.addEventListener('click', handleRecaptureClick);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
 </script>

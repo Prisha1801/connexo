@@ -10,11 +10,32 @@ use App\Services\CallWebhookApiService;
 use App\Services\ContactService;
 use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\Log;
-use Modules\LeadManager\Models\Lead;
 use Modules\WorkFlows\Models\WorkflowWebhookData;
 
 class WorkflowWebhookController extends Controller
 {
+    /**
+     * Capture webhook payload for testing (POST body stored for mapping).
+     * Used when testing webhook integration - POST JSON to /webhook/{workflowId}
+     */
+    public function capture(Request $request, $workflow)
+    {
+        $workflow = $workflow instanceof Workflow ? $workflow : Workflow::findOrFail($workflow);
+        $payload = $request->all();
+        $headers = collect($request->headers->all())
+            ->mapWithKeys(fn ($values, $key) => [strtolower($key) => $values[0] ?? ''])
+            ->toArray();
+
+        WorkflowWebhookData::create([
+            'workflow_id' => $workflow->id,
+            'payload' => $payload,
+            'response' => $headers,
+            'company_id' => $workflow->company_id,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Webhook data captured for mapping.']);
+    }
+
     public function handleWebhook(Request $request, $token)
     {
         $workflow = Workflow::with('tasks')->where('webhook_token', $token)->first();
@@ -46,7 +67,7 @@ class WorkflowWebhookController extends Controller
         $webhookData = WorkflowWebhookData::create([
             'workflow_id' => $workflow->id,
             'payload' => $payload,
-            'headers' => $headers,
+            'response' => $headers,
             'company_id' => $workflow->company_id,
         ]);
 
@@ -54,6 +75,7 @@ class WorkflowWebhookController extends Controller
             'body' => $payload,
             'headers' => $headers,
         ];
+        $taskPayload = $payload;
 
         $whatsAppService = app(WhatsAppService::class);
         $callApiService = app(CallWebhookApiService::class);
@@ -61,14 +83,22 @@ class WorkflowWebhookController extends Controller
         foreach ($workflow->tasks as $task) {
             switch ($task->task_type) {
                 case 'create_contact':
-                    $this->processCreateContactTask($task, $payload, $workflow->company_id);
+                    $contact = $this->processCreateContactTask($task, $taskPayload, $workflow->company_id);
+                    if ($contact) {
+                        $taskPayload = array_merge($taskPayload, [
+                            'contact_id' => $contact->id,
+                            'contact_phone' => $contact->phone ?? data_get($taskPayload, 'phone'),
+                            'contact_name' => $contact->name ?? data_get($taskPayload, 'name'),
+                        ]);
+                    }
                     break;
                 case 'send_whatsapp':
                     $config = $this->parseTaskConfig($task);
-                    $whatsAppService->sendCampaignMessage($config, $payload, $workflow->company_id);
+                    $whatsAppService->sendCampaignMessage($config, $taskPayload, $workflow->company_id);
                     break;
                 case 'call_api':
                     $config = $this->parseTaskConfig($task);
+                    $context['body'] = $taskPayload;
                     $callApiService->execute($config, $context, $task->id);
                     break;
             }
@@ -89,7 +119,7 @@ class WorkflowWebhookController extends Controller
         // FIX: Properly parse custom fields structure
         $customFields = $this->parseCustomFieldsConfig($config['custom_fields'] ?? []);
 
-        // Merge with proper defaults
+        // Merge with proper defaults (assign_to_user comes from form, agent_id is alias)
         $config = array_merge(
             [
                 'name_variable' => '',
@@ -100,6 +130,7 @@ class WorkflowWebhookController extends Controller
                 'custom_fields' => $config['custom_fields'] ?? [],
                 'add_custom_fields' => 0,
                 'create_lead'     => 0,
+                'assign_to_user'  => null,
                 'agent_id'        => null,
             ],
             $config,
@@ -112,27 +143,44 @@ class WorkflowWebhookController extends Controller
         ]);
 
         try {
-            $service = new ContactService();
+            $service = app(ContactService::class);
             $contact = $service->createContact($payload, $companyId, $config);
 
+            if (!$contact) {
+                return null;
+            }
+
+            $assignUserId = $config['assign_to_user'] ?? $config['agent_id'] ?? null;
             if (!empty($config['create_lead'])) {
                 $leadData = [
-                    'company_id'  => $companyId,
-                    'contact_id'  => $contact->id,
-                    'stage'       => 'New',
+                    'company_id'    => $companyId,
+                    'contact_id'    => $contact->id,
+                    'stage'         => 'New',
                     'notifications' => 1,
                 ];
+                if ($assignUserId) {
+                    $leadData['user_id'] = $assignUserId;
+                }
 
-                $lead = Lead::firstOrCreate(
-                    ['company_id' => $companyId, 'contact_id' => $contact->id],
-                    $leadData
-                );
+                $leadClass = \Modules\LeadManager\Models\Lead::class;
+                if (class_exists($leadClass)) {
+                    try {
+                        $leadClass::firstOrCreate(
+                            ['company_id' => $companyId, 'contact_id' => $contact->id],
+                            $leadData
+                        );
+                    } catch (\Throwable $e) {
+                        Log::warning('Lead creation skipped (table/column may differ)', ['error' => $e->getMessage()]);
+                    }
+                }
             }
             
             Log::info('Contact created via webhook', [
                 'contact_id' => $contact->id,
                 'task_id' => $task->id,
             ]);
+
+            return $contact;
         } catch (\Exception $e) {
             Log::error('Contact creation failed', [
                 'error' => $e->getMessage(),
@@ -141,6 +189,7 @@ class WorkflowWebhookController extends Controller
                 'config' => $config,
                 'trace' => $e->getTraceAsString(),
             ]);
+            return null;
         }
     }
 

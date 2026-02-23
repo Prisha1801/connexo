@@ -178,5 +178,6 @@
             <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
             <!--Custom js for ctwa-->
              <script src="{{ asset('js') }}/ctwa.js"></script>
+            @stack('js-late')
     </body>
 </html>

@@ -1,0 +1,26 @@
+{
+    "alias": "ctwa",
+    "nameSpace": "Modules\\CTWA",
+    "description": "Click to WhatsApp Ads - Create and manage Meta ads that drive users to WhatsApp, receive webhooks, and send campaigns",
+    "keywords": ["ctwa", "whatsapp", "meta", "facebook", "ads"],
+    "active": 1,
+    "order": 0,
+    "providers": ["Modules\\CTWA\\Providers\\Main"],
+    "aliases": {},
+    "files": [],
+    "requires": [],
+    "ownermenus": [
+        {
+            "name": "CTWA Panel",
+            "icon": "ni ni-whatsapp text-success",
+            "route": "ctwa.panel"
+        }
+    ],
+    "staffmenus": [
+        {
+            "name": "CTWA Panel",
+            "icon": "ni ni-whatsapp text-success",
+            "route": "ctwa.panel"
+        }
+    ]
+}

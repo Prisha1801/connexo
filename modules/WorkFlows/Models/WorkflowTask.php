@@ -9,7 +9,7 @@ class WorkflowTask extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['workflow_id', 'task_type', 'task_name', 'task_config', 'company_id'];
+    protected $fillable = ['workflow_id', 'task_type', 'task_name', 'task_config', 'order', 'company_id'];
 
     protected $casts = [
         'task_config' => 'array',
