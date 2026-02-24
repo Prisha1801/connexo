@@ -19,6 +19,7 @@ use Modules\Catalogs\Models\OrderItem;
 use App\Models\Paymenttemplate;
 use Modules\Catalogs\Models\ProductCategory;
 use Modules\Catalogs\Models\Order;
+use Modules\Catalogs\Models\DeliveryAgent;
 use Modules\Contacts\Models\Group;
 use Modules\Wpbox\Models\Template;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +27,7 @@ use Dompdf\Dompdf;
 use Illuminate\Support\Facades\Validator;
 use DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Modules\Catalogs\Models\OrderAddress;
 
@@ -114,6 +116,7 @@ class Main extends Controller
                 'webroute_path' => $this->webroute_path,
                 'fields' => $fields,
                 'parameter_name' => $this->parameter_name,
+                'hidePaging' => true,
             ],
             'catalogs' => $catalogs,
             'products' => $products,
@@ -317,7 +320,8 @@ class Main extends Controller
         // Validate input
         $validated = $request->validate([
             'search' => 'nullable|string|max:255',
-            'category' => 'nullable|integer|exists:products_category,id',
+            'category' => 'nullable|integer|exists:product_category,id',
+            'stock_status' => 'nullable|in:0,1',
         ]);
         
         $company = $this->getCompany();
@@ -347,6 +351,11 @@ class Main extends Controller
                     $retailerIds = explode(',', $category->retailer_id);
                     $productQuery->whereIn('retailer_id', $retailerIds);
                 }
+            }
+
+            // Apply stock status filter (only if column exists)
+            if (isset($validated['stock_status']) && $validated['stock_status'] !== '' && Schema::hasColumn('catalog_products', 'stock_status')) {
+                $productQuery->where('stock_status', (int) $validated['stock_status']);
             }
 
             // Get paginated results
@@ -990,14 +999,14 @@ class Main extends Controller
 
         // ---- Stats ----
         $totalOrders   = $orders->total();
-        $paidOrders    = $allItems->where('payment_status', 'Paid')->count();
+        $paidOrders    = $allItems->filter(fn ($o) => strtolower($o->payment_status ?? '') === 'paid')->count();
         $pendingOrders = $allItems->where('status', 'order')->count();
 
         $totalRevenue   = 0;
         $totalShipping  = 0;
         $totalDiscount  = 0;
 
-        foreach ($allItems->where('payment_status', 'Paid') as $order) {
+        foreach ($allItems->filter(fn ($o) => strtolower($o->payment_status ?? '') === 'paid') as $order) {
             $finalAmount = ($order->subtotal_offset ?? 1) != 0
                 ? $order->subtotal_value / $order->subtotal_offset
                 : 0;
@@ -1122,6 +1131,10 @@ class Main extends Controller
         $company = $this->getCompany();
         $orders = OrderItem::where('order_id', $id)->paginate(config('settings.paginate'));
         $order = Order::where('id', $id)->first();
+        $deliveryAgents = DeliveryAgent::where('company_id', $company->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
         $Paymenttemplate = Paymenttemplate::where('company_id', $company->id)->first();
         $products = CatalogProduct::where('company_id', $company->id)->get();
         $freezePricing = false;
@@ -1167,8 +1180,42 @@ class Main extends Controller
                 'freezePricing' => $freezePricing,
                 'lastContactReply' => $contact->last_client_reply_at ?? null,
                 'isFreeWindowExpired' => $isFreeWindowExpired,
+                'deliveryAgents' => $deliveryAgents,
             ],
         );
+    }
+
+    public function assignDeliveryAgent(Request $request, Order $order)
+    {
+        $company = $this->getCompany();
+
+        $validated = $request->validate([
+            'delivery_agent_id' => 'nullable|exists:delivery_agents,id',
+        ]);
+
+        if (!empty($validated['delivery_agent_id'])) {
+            $agent = DeliveryAgent::where('id', $validated['delivery_agent_id'])
+                ->where('company_id', $company->id)
+                ->first();
+
+            if (!$agent) {
+                return redirect()
+                    ->back()
+                    ->with('error', __('Selected delivery agent is not available.'));
+            }
+
+            $order->delivery_agent_id = $agent->id;
+            // Keep delivery_partner in sync for existing views/exports
+            $order->delivery_partner = $agent->name;
+        } else {
+            $order->delivery_agent_id = null;
+        }
+
+        $order->save();
+
+        return redirect()
+            ->back()
+            ->with('success', __('Delivery agent updated successfully.'));
     }
 
     public function itemEdit($id)
@@ -1180,17 +1227,19 @@ class Main extends Controller
             $this->view_path . 'order/edit',
             [
                 'setup' => [
-                    'title' => 'Order Edit',
+                    'title' => __('Edit Delivery Address'),
+                    'subtitle' => __('Order') . ' #' . ($order->reference_id ?? ''),
                     'items' => $orders,
                     'item_names' => '',
                     'webroute_path' => '',
                     'fields' => [],
                     'custom_table' => true,
+                    'iscontent' => true,
                     'parameter_name' => '',
                     'parameters' => count($_GET) != 0,
                 ],
+                'order' => $order,
             ],
-            ['order' => $order],
         );
     }
 
@@ -1207,10 +1256,9 @@ class Main extends Controller
             $order->tower_number = $request->tower_number;
             $order->state = $request->state;
             $order->update();
-            return redirect()->route('catalog.orderIndex');
-        } else {
-            return redirect()->route('catalog.orderIndex');
+            return redirect()->route('catalog.itemIndex', $order->id)->with('success', __('Address updated successfully'));
         }
+        return redirect()->route('catalog.orderIndex');
     }
 
     // public function pdf($id)
@@ -1351,12 +1399,20 @@ class Main extends Controller
         $companyId = $order->company_id;
 
         $paymentConfig = Paymenttemplate::where('company_id', $companyId)->first();
+        if (!$paymentConfig) {
+            $paymentConfig = new Paymenttemplate();
+            $paymentConfig->business_name = config('app.name');
+        }
+
+        if (!class_exists(\TCPDF::class)) {
+            return redirect()
+                ->route('catalog.orderIndex')
+                ->with('error', __('Invoice library (TCPDF) is not installed. Please contact support.'));
+        }
 
         // Preload catalog products efficiently
         $retailerIds = $orderItems->pluck('retailer_id')->unique();
         $catalogProducts = CatalogProduct::whereIn('retailer_id', $retailerIds)->get()->keyBy('retailer_id');
-
-        require_once base_path('public/tcpdf/tcpdf.php');
 
         // Set page size based on parameter
         if ($size === 'thermal') {
@@ -1780,7 +1836,11 @@ class Main extends Controller
         $retailerIds = $orderItems->pluck('retailer_id')->unique();
         $catalogProducts = CatalogProduct::whereIn('retailer_id', $retailerIds)->get()->keyBy('retailer_id');
 
-        require_once base_path('public/tcpdf/tcpdf.php');
+        if (!class_exists(\TCPDF::class)) {
+            return redirect()
+                ->route('catalog.orderIndex')
+                ->with('error', __('Receipt library (TCPDF) is not installed. Please contact support.'));
+        }
 
         // Calculate page height dynamically
         $baseHeight = 50; // header + spacing
@@ -2092,6 +2152,65 @@ class Main extends Controller
         return view($this->view_path . 'catalog-product-edit', compact('productcategory', 'CatalogProduct'));
     }
 
+    public function inventoryIndex(Request $request)
+    {
+        $this->authChecker();
+        if ($this->getCompany()->getConfig('whatsapp_webhook_verified', 'no') != 'yes' || $this->getCompany()->getConfig('whatsapp_settings_done', 'no') != 'yes') {
+            return redirect(route('whatsapp.setup'));
+        }
+        $company = $this->getCompany();
+        $company_id = $company->id;
+        $catalogIds = Catalog::where('company_id', $company_id)->where('status', 1)->pluck('catalog_id')->toArray();
+        $query = CatalogProduct::where('company_id', $company_id)->whereIn('catalog_id', $catalogIds);
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('product_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('retailer_id', 'like', '%' . $request->search . '%');
+            });
+        }
+        if ($request->filled('stock_status') && $request->stock_status !== '') {
+            $query->where('stock_status', (int) $request->stock_status);
+        }
+        $products = $query->orderBy('product_name')->paginate(15)->withQueryString();
+        return view($this->view_path . 'inventory.index', [
+            'setup' => [
+                'title' => __('Inventory Management'),
+                'subtitle' => __('Track and adjust product stock levels'),
+                'items' => $products,
+                'item_names' => __('Products'),
+                'custom_table' => true,
+            ],
+            'products' => $products,
+            'company_id' => $company_id,
+        ]);
+    }
+
+    public function inventoryAdjust(Request $request)
+    {
+        $this->authChecker();
+        $request->validate([
+            'product_id' => 'required|integer|exists:catalog_products,id',
+            'adjustment' => 'required|integer',
+            'type' => 'required|in:in,out',
+        ]);
+        $product = CatalogProduct::findOrFail($request->product_id);
+        if ($product->company_id != $this->getCompany()->id) {
+            abort(403);
+        }
+        if (!Schema::hasColumn('catalog_products', 'stock_quantity')) {
+            return redirect()->route('catalog.inventoryIndex')->with('error', __('Please run migrations to enable inventory features.'));
+        }
+        $currentQty = (int) ($product->stock_quantity ?? 0);
+        $adjustment = abs((int) $request->adjustment);
+        if ($request->type === 'in') {
+            $product->stock_quantity = $currentQty + $adjustment;
+        } else {
+            $product->stock_quantity = max(0, $currentQty - $adjustment);
+        }
+        $product->save();
+        return redirect()->route('catalog.inventoryIndex')->with('success', __('Stock updated successfully'));
+    }
+
     // public function productUpdate(Request $request){
     //     // return $request;
     //     $productCategory = ProductCategory::where('id',$request->product_id)->first();
@@ -2113,7 +2232,20 @@ class Main extends Controller
         $request->validate([
             'categories' => 'required|array',
             'check_id' => 'required|string',
+            'product_id' => 'required|integer|exists:catalog_products,id',
+            'stock_status' => 'nullable|in:0,1',
+            'stock_quantity' => 'nullable|integer|min:0',
         ]);
+
+        // Update stock status and quantity (only if columns exist)
+        $product = CatalogProduct::findOrFail($request->product_id);
+        if (Schema::hasColumn('catalog_products', 'stock_status') && isset($request->stock_status)) {
+            $product->stock_status = (int) $request->stock_status;
+        }
+        if (Schema::hasColumn('catalog_products', 'stock_quantity') && array_key_exists('stock_quantity', $request->all())) {
+            $product->stock_quantity = $request->stock_quantity ?: null;
+        }
+        $product->save();
 
         // Get the product's retailer_id
         $retailerId = $request->check_id;

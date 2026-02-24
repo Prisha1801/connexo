@@ -101,14 +101,14 @@
                     <div class="card-footer py-4">
                         @if(isset($items) && is_countable($items) && count($items) > 0)
                         
-                            @unless(isset($hidePaging) && $hidePaging)
+                            @unless((isset($hidePaging) && $hidePaging) || !method_exists($items, 'links'))
                                 <nav class="d-flex justify-content-end" aria-label="...">
                                     {{ $items->appends(request()->query())->links() }}
                                 </nav>
                             @endunless
                         @else
                             @if(isset($item_names))
-                                <h4>{{__('crud.no_items',['items'=>$item_names])}}</h4>
+                                <h4>{{ __('crud.no_items', ['items' => $item_names]) }}</h4>
                             @endif
                         @endif
                     </div>

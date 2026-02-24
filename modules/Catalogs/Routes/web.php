@@ -65,6 +65,8 @@ Route::group(
 
                     Route::Any('product/edit/{id}', 'Main@productEdit')->name('catalog.productEdit');
                     Route::Any('product/update', 'Main@productUpdate')->name('catalog.productUpdate');
+                    Route::Any('inventory', 'Main@inventoryIndex')->name('catalog.inventoryIndex');
+                    Route::post('inventory/adjust', 'Main@inventoryAdjust')->name('catalog.inventoryAdjust');
 
                     Route::Any('/address-message-enable', 'Main@toggleAddressMessage')->name('catalog.toggleAddressMessage');
                     Route::Any('/payment-method-enable', 'Main@togglePaymentMethod')->name('catalog.togglePaymentMethod');
@@ -94,6 +96,9 @@ Route::group(
 
                     Route::get('/order/{id}/adjust-section', 'Main@orderAdjustSection')
                         ->name('catalog.orderAdjustSection');
+
+                    Route::post('/order/{order}/assign-agent', 'Main@assignDeliveryAgent')
+                        ->name('catalog.assignDeliveryAgent');
                 });
             },
         );

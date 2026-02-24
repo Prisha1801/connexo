@@ -28,6 +28,32 @@
             <form id="restorant-apps-form" method="post" autocomplete="off" enctype="multipart/form-data" action="{{route('catalog.productUpdate')}}">
                 @csrf
                 <input type="hidden" name="check_id" value="{{$CatalogProduct->retailer_id}}">
+                <input type="hidden" name="product_id" value="{{$CatalogProduct->id}}">
+
+                <!-- Stock Status -->
+                <div class="row mb-10">
+                    <div class="col-md-8">
+                        <label class="form-label fs-6 fw-semibold text-gray-700">{{ __('Stock Status') }}</label>
+                        <div class="d-flex gap-4">
+                            <label class="form-check form-check-custom form-check-solid">
+                                <input class="form-check-input" type="radio" name="stock_status" value="1" 
+                                    {{ (!isset($CatalogProduct->stock_status) || $CatalogProduct->stock_status == 1) ? 'checked' : '' }}>
+                                <span class="form-check-label fw-semibold text-gray-700">{{ __('Active') }}</span>
+                            </label>
+                            <label class="form-check form-check-custom form-check-solid">
+                                <input class="form-check-input" type="radio" name="stock_status" value="0" 
+                                    {{ isset($CatalogProduct->stock_status) && $CatalogProduct->stock_status == 0 ? 'checked' : '' }}>
+                                <span class="form-check-label fw-semibold text-gray-700">{{ __('Inactive') }}</span>
+                            </label>
+                        </div>
+                        <div class="text-muted fs-7 mt-2">{{ __('Inactive products will be hidden from customers') }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fs-6 fw-semibold text-gray-700">{{ __('Stock Quantity') }}</label>
+                        <input type="number" name="stock_quantity" class="form-control form-control-solid" 
+                            value="{{ $CatalogProduct->stock_quantity ?? '' }}" min="0" placeholder="{{ __('Optional') }}">
+                    </div>
+                </div>
 
                 <!-- Multiple Category Selection -->
                 <div class="row">

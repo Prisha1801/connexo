@@ -2,74 +2,103 @@
 
 @section('cardbody')
         <!-- Page Header -->
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mb-7">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mb-7 gap-4">
             <div class="d-flex align-items-center">
-                <h1 class="d-flex align-items-center text-dark fw-bolder my-1 fs-3">
-                    <i class="ki-duotone ki-cart fs-2hx me-4 text-primary">
-                        <span class="path1"></span>
-                        <span class="path2"></span>
-                    </i>
-                    Orders Management
-                </h1>
-                <span class="badge badge-light-primary fs-8 fw-bolder ms-4">{{ $setup['items']->total() }}
-                    {{ __('Orders') }}</span>
+                <div class="symbol symbol-60px symbol-circle me-4">
+                    <span class="symbol-label bg-light-primary">
+                        <i class="ni ni-cart text-primary" style="font-size: 1.5rem;"></i>
+                    </span>
+                </div>
+                <div>
+                    <h1 class="text-dark fw-bolder my-1 fs-2 mb-0">{{ __('Orders Management') }}</h1>
+                    <p class="text-muted fs-7 mb-0">{{ __('Manage and track your catalog orders') }}</p>
+                    <span class="badge badge-light-primary fs-8 fw-bolder mt-2">{{ $setup['items']->total() }} {{ __('Orders') }}</span>
+                </div>
             </div>
 
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
                 @if ($setup['items']->isNotEmpty())
-                    <div class="d-flex align-items-center position-relative">
-                        <i class="ki-duotone ki-magnifier fs-3 position-absolute start-0 ms-3">
-                            <span class="path1"></span>
-                            <span class="path2"></span>
-                        </i>
-                        <input type="text" id="order-search" class="form-control form-control-solid w-250px ps-10"
-                            placeholder="Search orders, customers, phone...">
+                    <div class="position-relative">
+                        <i class="ni ni-zoom-split-in position-absolute ms-3 mt-2 text-muted" style="left: 0; font-size: 1rem;"></i>
+                        <input type="text" id="order-search" class="form-control w-250px" style="padding-left: 2.5rem;"
+                            placeholder="{{ __('Search orders, customers, phone...') }}">
                     </div>
                 @endif
-
-                <!-- Advanced Search Button -->
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#advancedSearchModal">
-                    <i class="ki-duotone ki-filter fs-3 me-1">
-                        <span class="path1"></span>
-                        <span class="path2"></span>
-                    </i>
-                    <span class="d-none d-md-inline">Advanced Search</span>
+                <button class="btn btn-primary px-5" data-toggle="modal" data-target="#advancedSearchModal">
+                    <i class="ni ni-funnel me-2"></i>
+                    {{ __('Advanced Search') }}
                 </button>
             </div>
         </div>
 
         <!-- Stats Cards -->
         @if ($setup['items']->isNotEmpty())
-            <div class="row g-6 mb-7">
+            <div class="row g-5 mb-7">
                 <div class="col-xl-3 col-sm-6">
-                    <div class="card card-dashed h-xl-100 flex-center flex-column py-4">
-                        <span class="fs-2hx fw-bolder text-dark">{{ $stats['totalOrders'] }}</span>
-                        <span class="text-gray-600 fw-semibold">{{ __('Total Orders') }}</span>
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden stats-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <div class="card-body d-flex align-items-center py-5">
+                            <div class="symbol symbol-50px me-4">
+                                <span class="symbol-label bg-white bg-opacity-25 rounded">
+                                    <i class="ni ni-cart text-white" style="font-size: 1.5rem;"></i>
+                                </span>
+                            </div>
+                            <div>
+                                <span class="fs-2hx fw-bolder text-white d-block">{{ $stats['totalOrders'] }}</span>
+                                <span class="text-white text-opacity-75 fw-semibold fs-6">{{ __('Total Orders') }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-xl-3 col-sm-6">
-                    <div class="card card-dashed h-xl-100 flex-center flex-column py-4">
-                        <span class="fs-2hx fw-bolder text-success">{{ $stats['paidOrders'] }}</span>
-                        <span class="text-gray-600 fw-semibold">{{ __('Paid Orders') }}</span>
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden stats-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                        <div class="card-body d-flex align-items-center py-5">
+                            <div class="symbol symbol-50px me-4">
+                                <span class="symbol-label bg-white bg-opacity-25 rounded">
+                                    <i class="ni ni-check-bold text-white" style="font-size: 1.5rem;"></i>
+                                </span>
+                            </div>
+                            <div>
+                                <span class="fs-2hx fw-bolder text-white d-block">{{ $stats['paidOrders'] }}</span>
+                                <span class="text-white text-opacity-75 fw-semibold fs-6">{{ __('Paid Orders') }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-xl-3 col-sm-6">
-                    <div class="card card-dashed h-xl-100 flex-center flex-column py-4">
-                        <span class="fs-2hx fw-bolder text-warning">{{ $stats['pendingOrders'] }}</span>
-                        <span class="text-gray-600 fw-semibold">{{ __('Pending Orders') }}</span>
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <div class="card-body d-flex align-items-center py-5">
+                            <div class="symbol symbol-50px me-4">
+                                <span class="symbol-label bg-white bg-opacity-25 rounded">
+                                    <i class="ni ni-time-alarm text-white" style="font-size: 1.5rem;"></i>
+                                </span>
+                            </div>
+                            <div>
+                                <span class="fs-2hx fw-bolder text-white d-block">{{ $stats['pendingOrders'] }}</span>
+                                <span class="text-white text-opacity-75 fw-semibold fs-6">{{ __('Pending Orders') }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-xl-3 col-sm-6">
-                    <div class="card card-dashed h-xl-100 flex-center flex-column py-4">
-                        <span class="fs-2hx fw-bolder text-info">₹{{ number_format($stats['totalRevenue'], 2) }}</span>
-                        <span class="text-gray-600 fw-semibold">{{ __('Total Revenue') }}</span>
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <div class="card-body d-flex align-items-center py-5">
+                            <div class="symbol symbol-50px me-4">
+                                <span class="symbol-label bg-white bg-opacity-25 rounded">
+                                    <i class="ni ni-money-coins text-white" style="font-size: 1.5rem;"></i>
+                                </span>
+                            </div>
+                            <div>
+                                <span class="fs-2hx fw-bolder text-white d-block">₹{{ number_format($stats['totalRevenue'], 0) }}</span>
+                                <span class="text-white text-opacity-75 fw-semibold fs-6">{{ __('Total Revenue') }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         @endif
 
         <!-- Orders Table Card -->
-        <div class="card">
+        <div class="card shadow-sm border-0">
             @if ($setup['items']->isNotEmpty())
                 <!-- Card Header -->
                 <div class="card-header border-0 pt-6">
@@ -79,14 +108,13 @@
                     <div class="card-toolbar">
                         <div class="d-flex align-items-center gap-2">
                             <span class="text-muted fs-7">{{ __('Filter by status:') }}</span>
-                            <select class="form-select form-select-sm w-150px" id="status-filter">
-                                <option value="">{{ __('All Orders') }}</option>
-                                <option value="order" {{ request('order_status') == 'order' ? 'selected' : '' }}>Pending
-                                </option>
-                                <option value="accepted" {{ request('order_status') == 'accepted' ? 'selected' : '' }}>
-                                    Accepted</option>
-                                <option value="dispatched" {{ request('order_status') == 'dispatched' ? 'selected' : '' }}>
-                                    Dispatched</option>
+                            <select class="form-select form-select-sm w-150px" id="status-filter" onchange="var u='{{ route('catalog.orderIndex') }}'; var p=new URLSearchParams(window.location.search); this.value ? p.set('order_status',this.value) : p.delete('order_status'); p.delete('page'); window.location.href=u+(p.toString()?'?'+p:'')">
+                                <option value="" {{ !request('order_status') ? 'selected' : '' }}>{{ __('All Orders') }}</option>
+                                <option value="order" {{ request('order_status') == 'order' ? 'selected' : '' }}>{{ __('Pending') }}</option>
+                                <option value="accepted" {{ request('order_status') == 'accepted' ? 'selected' : '' }}>{{ __('Accepted') }}</option>
+                                <option value="preparing" {{ request('order_status') == 'preparing' ? 'selected' : '' }}>{{ __('Preparing') }}</option>
+                                <option value="ready_to_dispatch" {{ request('order_status') == 'ready_to_dispatch' ? 'selected' : '' }}>{{ __('Ready to Dispatch') }}</option>
+                                <option value="dispatched" {{ request('order_status') == 'dispatched' ? 'selected' : '' }}>{{ __('Dispatched') }}</option>
                                 <option value="delivered" {{ request('order_status') == 'delivered' ? 'selected' : '' }}>
                                     Delivered</option>
                                 <option value="canceled" {{ request('order_status') == 'canceled' ? 'selected' : '' }}>
@@ -96,24 +124,23 @@
                     </div>
                 </div>
 
-                <!-- Debugging Info -->
-                <div class="alert alert-info d-flex align-items-center mx-6 mt-4 mb-0">
-                    <i class="ki-duotone ki-information fs-2 me-4">
-                        <span class="path1"></span>
-                        <span class="path2"></span>
-                        <span class="path3"></span>
-                    </i>
-                    <div class="flex-grow-1">
-                        <strong>Current Filters:</strong>
-                        Search: "{{ request('search') }}"
-                        | Phone: "{{ request('phone') }}"
-                        | Order ID: "{{ request('order_id') }}"
-                        | Customer: "{{ request('customer_name') }}"
-                        | Payment: {{ request('payment_status') ? ucfirst(request('payment_status')) : 'All' }}
-                        | Status: {{ request('order_status') ? ucfirst(request('order_status')) : 'All' }}
+                @if (request()->hasAny(['search', 'phone', 'order_id', 'customer_name', 'payment_status', 'order_status', 'transaction_type']))
+                <div class="alert alert-dismissible alert-light-primary d-flex align-items-center mx-6 mt-4 mb-0" role="alert">
+                    <i class="ni ni-funnel me-4 text-primary"></i>
+                    <div class="flex-grow-1 fs-7">
+                        <strong>{{ __('Active filters') }}:</strong>
+                        @if(request('search')) <span class="badge badge-light me-1">{{ __('Search') }}: {{ request('search') }}</span> @endif
+                        @if(request('phone')) <span class="badge badge-light me-1">{{ __('Phone') }}: {{ request('phone') }}</span> @endif
+                        @if(request('order_id')) <span class="badge badge-light me-1">{{ __('Order ID') }}: {{ request('order_id') }}</span> @endif
+                        @if(request('customer_name')) <span class="badge badge-light me-1">{{ __('Customer') }}: {{ request('customer_name') }}</span> @endif
+                        @if(request('payment_status')) <span class="badge badge-light me-1">{{ __('Payment') }}: {{ ucfirst(request('payment_status')) }}</span> @endif
+                        @if(request('order_status')) <span class="badge badge-light me-1">{{ __('Status') }}: {{ ucfirst(str_replace('_', ' ', request('order_status'))) }}</span> @endif
+                        @if(request('transaction_type')) <span class="badge badge-light me-1">{{ __('Transaction') }}: {{ ucfirst(request('transaction_type')) }}</span> @endif
                     </div>
-                    <a href="{{ url()->current() }}" class="btn btn-sm btn-light ms-3">Clear Filters</a>
+                    <a href="{{ route('catalog.orderIndex') }}" class="btn btn-sm btn-light-primary">{{ __('Clear all') }}</a>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
+                @endif
 
                 <!-- Table -->
                 <div class="card-body pt-6">
@@ -151,10 +178,7 @@
                                             <div class="d-flex align-items-center">
                                                 <div class="symbol symbol-40px symbol-circle me-4">
                                                     <div class="symbol-label bg-light-primary">
-                                                        <i class="ki-duotone ki-calendar-8 fs-2 text-primary">
-                                                            <span class="path1"></span>
-                                                            <span class="path2"></span>
-                                                        </i>
+                                                        <i class="ni ni-calendar-grid-58 text-primary"></i>
                                                     </div>
                                                 </div>
                                                 <div class="d-flex flex-column">
@@ -177,8 +201,7 @@
                                             <div class="d-flex align-items-center">
                                                 <div class="symbol symbol-40px symbol-circle me-4">
                                                     <div class="symbol-label bg-light-info">
-                                                        <span
-                                                            class="fs-4 text-info fw-bold">{{ substr($item->user_name, 0, 1) }}</span>
+                                                        <span class="text-info fw-bold" style="font-size: 1rem;">{{ substr($item->user_name, 0, 1) }}</span>
                                                     </div>
                                                 </div>
                                                 <div class="d-flex flex-column">
@@ -212,10 +235,7 @@
                                                 $total = $finalAmount - $discountAmount + $shipping;
                                             @endphp
                                             <div class="d-flex align-items-center">
-                                                <i class="ki-duotone ki-dollar fs-2 me-2 text-warning">
-                                                    <span class="path1"></span>
-                                                    <span class="path2"></span>
-                                                </i>
+                                                <i class="ni ni-money-coins me-2 text-warning"></i>
                                                 <span
                                                     class="text-gray-800 fw-bold fs-5">₹{{ number_format($total, 2) }}</span>
                                             </div>
@@ -275,10 +295,9 @@
                                             <div class="d-flex align-items-center gap-2">
                                                 <span
                                                     class="badge badge-light-{{ $badge['class'] }} py-3 px-3 fw-bold status-badge">{{ $badge['label'] }}</span>
-                                                <a href="{{ url()->current() . '?order_status=' . $status }}"
-                                                    class="btn btn-icon btn-sm btn-light" title="Filter by this status"
-                                                    data-bs-toggle="tooltip">
-                                                    <i class="ki-duotone ki-filter fs-2"></i>
+                                                <a href="{{ route('catalog.orderIndex', ['order_status' => $status]) }}"
+                                                    class="btn btn-sm btn-outline-secondary" title="{{ __('Filter by status') }}">
+                                                    <i class="ni ni-funnel"></i>
                                                 </a>
                                             </div>
                                         </td>
@@ -288,29 +307,17 @@
                                             <div class="d-flex justify-content-end gap-2">
                                                 <!-- View Order -->
                                                 <a href="{{ route('catalog.itemIndex', $item->id) }}"
-                                                    class="btn btn-icon btn-light-primary btn-sm"
-                                                    title="View Order Details" data-bs-toggle="tooltip"
-                                                    data-bs-placement="top">
-                                                    <i class="ki-duotone ki-eye fs-4">
-                                                        <span class="path1"></span>
-                                                        <span class="path2"></span>
-                                                        <span class="path3"></span>
-                                                    </i>
+                                                    class="btn btn-sm btn-primary"
+                                                    title="{{ __('View Order Details') }}">
+                                                    <i class="ni ni-zoom-split-in mr-1"></i> {{ __('View') }}
                                                 </a>
 
                                                 <!-- Print Invoice -->
                                                 @if (!in_array($item->status, ['canceled']))
-                                                    <button type="button" class="btn btn-icon btn-light-success btn-sm"
-                                                        data-bs-toggle="modal" data-bs-target="#printInvoiceModal"
-                                                        data-order-id="{{ $item->id }}" title="Print Invoice"
-                                                        data-bs-toggle="tooltip" data-bs-placement="top">
-                                                        <i class="ki-duotone ki-printer fs-4">
-                                                            <span class="path1"></span>
-                                                            <span class="path2"></span>
-                                                            <span class="path3"></span>
-                                                            <span class="path4"></span>
-                                                            <span class="path5"></span>
-                                                        </i>
+                                                    <button type="button" class="btn btn-sm btn-success"
+                                                        data-toggle="modal" data-target="#printInvoiceModal"
+                                                        data-order-id="{{ $item->id }}" title="{{ __('Print Invoice') }}">
+                                                        <i class="ni ni-printer mr-1"></i> {{ __('Print') }}
                                                     </button>
                                                 @endif
                                             </div>
@@ -344,33 +351,24 @@
             @else
                 <!-- Empty State -->
                 <div class="card-body">
-                    <div class="text-center py-10">
+                    <div class="text-center py-15">
                         <div class="d-flex flex-column align-items-center justify-content-center">
-                            <!-- Icon -->
-                            <div class="symbol symbol-100px symbol-circle mb-5">
-                                <div class="symbol-label bg-light-primary">
-                                    <i class="ki-duotone ki-cart fs-2hx text-primary">
-                                        <span class="path1"></span>
-                                        <span class="path2"></span>
-                                    </i>
-                                </div>
+                            <div class="symbol symbol-120px symbol-circle mb-6">
+                                <span class="symbol-label bg-light-primary">
+                                    <i class="ni ni-cart text-primary" style="font-size: 2rem;"></i>
+                                </span>
                             </div>
-
-                            <!-- Text -->
-                            <h3 class="text-dark fw-bolder mb-3">{{ __('No Orders Found') }}</h3>
-                            <p class="text-muted fs-5 mb-6 w-lg-400px">
+                            <h3 class="text-dark fw-bolder mb-3 fs-2">{{ __('No Orders Found') }}</h3>
+                            <p class="text-muted fs-5 mb-6 w-lg-450px">
                                 {{ __('There are no orders matching your search criteria. Try adjusting your filters or search terms.') }}
                             </p>
-
-                            <!-- Action Buttons -->
                             <div class="d-flex gap-3">
-                                <a href="{{ url()->current() }}" class="btn btn-primary">
-                                    <i class="ki-duotone ki-arrow-left fs-2 me-1"></i>
+                                <a href="{{ route('catalog.orderIndex') }}" class="btn btn-primary px-5 py-3">
+                                    <i class="ki-duotone ki-arrow-left fs-2 me-2"><span class="path1"></span><span class="path2"></span></i>
                                     {{ __('Clear Filters') }}
                                 </a>
-                                <a href="#" class="btn btn-light" data-bs-toggle="modal"
-                                    data-bs-target="#advancedSearchModal">
-                                    <i class="ki-duotone ki-filter fs-2 me-1"></i>
+                                <a href="#" class="btn btn-light px-5 py-3" data-toggle="modal" data-target="#advancedSearchModal">
+                                    <i class="ki-duotone ki-filter fs-2 me-2"><span class="path1"></span><span class="path2"></span></i>
                                     {{ __('Advanced Search') }}
                                 </a>
                             </div>
@@ -387,7 +385,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 class="modal-title">Advanced Order Search</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <form method="GET" action="{{ url()->current() }}" id="advancedSearchForm">
                     @foreach (request()->except('phone', 'order_id', 'customer_name', 'payment_status', 'order_status', 'page') as $key => $value)
@@ -405,7 +403,7 @@
                                         <span class="path2"></span>
                                     </i>
                                     <input type="text" name="phone" value="{{ request('phone') }}"
-                                        class="form-control form-control-solid ps-10" placeholder="Enter phone number" />
+                                        class="form-control" placeholder="Enter phone number" />
                                 </div>
                             </div>
 
@@ -418,7 +416,7 @@
                                         <span class="path2"></span>
                                     </i>
                                     <input type="text" name="order_id" value="{{ request('order_id') }}"
-                                        class="form-control form-control-solid ps-10" placeholder="Enter order ID" />
+                                        class="form-control" placeholder="Enter order ID" />
                                 </div>
                             </div>
 
@@ -431,14 +429,14 @@
                                         <span class="path2"></span>
                                     </i>
                                     <input type="text" name="customer_name" value="{{ request('customer_name') }}"
-                                        class="form-control form-control-solid ps-10" placeholder="Enter customer name" />
+                                        class="form-control" placeholder="Enter customer name" />
                                 </div>
                             </div>
 
                             <!-- Payment Status -->
                             <div class="col-md-6">
                                 <label class="form-label">Payment Status</label>
-                                <select name="payment_status" class="form-select form-select-solid">
+                                <select name="payment_status" class="form-control">
                                     <option value="">All Payment Statuses</option>
                                     <option value="paid" {{ request('payment_status') == 'paid' ? 'selected' : '' }}>
                                         Paid</option>
@@ -454,7 +452,7 @@
                             <!-- Order Status -->
                             <div class="col-md-6">
                                 <label class="form-label">Order Status</label>
-                                <select name="order_status" class="form-select form-select-solid">
+                                <select name="order_status" class="form-control">
                                     <option value="">All Order Statuses</option>
                                     <option value="order" {{ request('order_status') == 'order' ? 'selected' : '' }}>
                                         Pending</option>
@@ -471,7 +469,7 @@
 
                             <div class="col-md-6">
                                 <label class="form-label">Transaction Type</label>
-                                <select name="transaction_type" class="form-select form-select-solid">
+                                <select name="transaction_type" class="form-control">
                                     <option value="">All Types</option>
                                     <option value="upi" {{ request('transaction_type') == 'upi' ? 'selected' : '' }}>
                                         UPI</option>
@@ -501,7 +499,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Select Print Format</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-5">
@@ -512,7 +510,7 @@
                                 <div class="card card-dashed cursor-pointer h-100 print-option" data-value="thermal">
                                     <div class="card-body text-center p-5">
                                         <div class="mb-5">
-                                            <i class="ki-outline ki-printer fs-4tx text-primary"></i>
+                                            <i class="ni ni-printer text-primary" style="font-size: 2rem;"></i>
                                         </div>
                                         <div class="fs-5 fw-bold">Thermal Printer</div>
                                         <div class="fs-7 text-muted">80mm Receipt</div>
@@ -528,7 +526,7 @@
                                 <div class="card card-dashed cursor-pointer h-100 print-option" data-value="full">
                                     <div class="card-body text-center p-5">
                                         <div class="mb-5">
-                                            <i class="ki-outline ki-document fs-4tx text-success"></i>
+                                            <i class="ni ni-single-copy-04 text-success" style="font-size: 2rem;"></i>
                                         </div>
                                         <div class="fs-5 fw-bold">A4 Print</div>
                                         <div class="fs-7 text-muted">Standard Document</div>
@@ -539,7 +537,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
                     <button id="confirmPrintBtn" type="button" class="btn btn-primary">Print Invoice</button>
                 </div>
             </div>
@@ -551,10 +549,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize tooltips
-            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            const tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
+            $('[data-toggle="tooltip"]').tooltip();
 
             // Search functionality
             const searchInput = document.getElementById('order-search');
@@ -642,7 +637,7 @@
 
             document.querySelector('.print-option[data-value="thermal"]').classList.add('active');
 
-            modal.addEventListener('show.bs.modal', function(event) {
+            $('#printInvoiceModal').on('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
                 const orderId = button.getAttribute('data-order-id');
                 modal.setAttribute('data-order-id', orderId);
@@ -654,69 +649,31 @@
                 const url = "{{ route('catalog.pdf', ['id' => ':id']) }}".replace(':id', orderId) +
                     `?size=${printType}`;
                 window.open(url, '_blank');
-                bootstrap.Modal.getInstance(modal).hide();
+                $('#printInvoiceModal').modal('hide');
             });
         });
 
         function resetFilters() {
-            document.querySelectorAll('#advancedSearchForm input[type="text"]').forEach(input => {
-                input.value = '';
-            });
-            document.querySelectorAll('#advancedSearchForm select').forEach(select => {
-                select.selectedIndex = 0;
-            });
-            document.getElementById('advancedSearchForm').submit();
+            window.location.href = "{{ route('catalog.orderIndex') }}";
         }
     </script>
 @endpush
 
 @push('css')
     <style>
-        .card-dashed {
-            border: 1px dashed #e4e6ef;
-            background: #fafafa;
-        }
-
-        .flex-center {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .order-row td {
-            padding: 1rem 0.75rem;
-            vertical-align: middle;
-        }
-
-        .print-option.active {
-            border-color: #009ef7;
-            background-color: #f1faff;
-        }
-
-        .print-option {
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .print-option:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
+        .card-dashed { border: 1px dashed #e4e6ef; background: #fafafa; }
+        .flex-center { display: flex; align-items: center; justify-content: center; }
+        .order-row td { padding: 1rem 0.75rem; vertical-align: middle; transition: background 0.2s; }
+        .order-row:hover td { background-color: #f9f9f9 !important; }
+        .print-option { cursor: pointer; transition: all 0.3s ease; }
+        .print-option:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .print-option.active { border-color: #009ef7 !important; background-color: #f1faff !important; }
+        .table tbody tr { transition: background 0.2s; }
+        .stats-card { transition: transform 0.2s; }
+        .stats-card:hover { transform: translateY(-2px); }
         @media (max-width: 768px) {
-            .d-flex.flex-column.flex-sm-row {
-                flex-direction: column !important;
-                align-items: flex-start !important;
-            }
-
-            .d-flex.flex-column.flex-sm-row .btn {
-                margin-top: 1rem;
-                width: 100%;
-            }
-
-            .w-250px {
-                width: 100% !important;
-            }
+            .d-flex.flex-column.flex-sm-row { flex-direction: column !important; align-items: flex-start !important; }
+            .w-250px { width: 100% !important; }
         }
     </style>
 @endpush

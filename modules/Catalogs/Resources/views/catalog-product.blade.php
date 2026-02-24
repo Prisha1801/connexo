@@ -2,10 +2,13 @@
 
 @section('contenttop')
 <div class="card-body">
-    <div class="row mb-3">
-        <div class="col-12">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
             <a href="javascript:void(0);" class="btn btn-sm btn-primary" id="syncCatalogBtn">
                 <i class="ni ni-refresh"></i> {{ __('Sync Products') }}
+            </a>
+            <a href="{{ route('catalog.inventoryIndex') }}" class="btn btn-sm btn-light-warning ml-2">
+                <i class="ni ni-box-2"></i> {{ __('Inventory') }}
             </a>
         </div>
     </div>
@@ -13,7 +16,7 @@
     <!-- Search and Filter Form -->
     <form method="GET" action="{{ route('catalog.productsCatalog') }}" id="filter-form" class="mb-3">
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="form-group mb-0">
                     <div class="input-group">
                         <div class="input-group-prepend">
@@ -24,7 +27,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="form-group mb-0">
                     <select name="category" class="form-control">
                         <option value="">{{ __('All Categories') }}</option>
@@ -34,6 +37,15 @@
                                 {{ $category->name }}
                             </option>
                         @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-group mb-0">
+                    <select name="stock_status" class="form-control">
+                        <option value="">{{ __('All Stock Status') }}</option>
+                        <option value="1" {{ request('stock_status') === '1' ? 'selected' : '' }}>{{ __('Active') }}</option>
+                        <option value="0" {{ request('stock_status') === '0' ? 'selected' : '' }}>{{ __('Inactive') }}</option>
                     </select>
                 </div>
             </div>
@@ -78,11 +90,17 @@
         <tr>
             <td>
                 <div class="media align-items-center">
-                    @if ($product->image_url)
-                        <a href="#" class="avatar rounded-circle mr-3">
-                            <img alt="Product" src="{{ $product->image_url }}">
-                        </a>
-                    @endif
+                    <div class="media-left mr-3">
+                        @if ($product->image_url)
+                            <div class="rounded-circle overflow-hidden" style="width: 48px; height: 48px;">
+                                <img alt="Product" src="{{ $product->image_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                        @else
+                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                <i class="ni ni-box-2 text-muted"></i>
+                            </div>
+                        @endif
+                    </div>
                     <div class="media-body">
                         <span class="name mb-0 text-sm">{{ $product->product_name }}</span>
                         @if($product->description)
@@ -102,12 +120,26 @@
                 @endif
             </td>
             <td>
-                <span class="badge badge-success">{{ __('Active') }}</span>
+                @if(isset($product->stock_status) && $product->stock_status == 0)
+                    <span class="badge badge-danger">{{ __('Inactive') }}</span>
+                @else
+                    <span class="badge badge-success">{{ __('Active') }}</span>
+                @endif
             </td>
             <td>
                 <span class="text-dark font-weight-bold">{{ $product->price ?? 'N/A' }}</span>
             </td>
             <td>
+                <button type="button" class="btn btn-sm btn-outline-info rounded-lg px-3 view-product-btn" 
+                   data-product-id="{{ $product->id }}"
+                   data-product-name="{{ $product->product_name }}"
+                   data-product-description="{{ $product->description ?? '' }}"
+                   data-product-price="{{ $product->price ?? 'N/A' }}"
+                   data-product-image="{{ $product->image_url ?? '' }}"
+                   data-product-stock="{{ isset($product->stock_status) && $product->stock_status == 0 ? __('Inactive') : __('Active') }}"
+                   data-toggle="tooltip" title="{{ __('View') }}">
+                    <i class="ni ni-zoom-split-in"></i> {{ __('View') }}
+                </button>
                 <a href="{{ route('catalog.productEdit', $product->id) }}" 
                    class="btn btn-sm btn-outline-primary rounded-lg px-3" 
                    data-toggle="tooltip" 
@@ -119,8 +151,49 @@
     @endforeach
 @endsection
 
+<!-- View Product Modal -->
+<div class="modal fade" id="viewProductModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewProductModalLabel">{{ __('Product Details') }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3" id="viewProductImageContainer">
+                    <img id="viewProductImage" src="" alt="" class="img-fluid rounded" style="max-height: 200px;">
+                </div>
+                <table class="table table-sm">
+                    <tr><th class="w-40">{{ __('Name') }}</th><td id="viewProductName"></td></tr>
+                    <tr><th>{{ __('Description') }}</th><td id="viewProductDescription"></td></tr>
+                    <tr><th>{{ __('Price') }}</th><td id="viewProductPrice" class="font-weight-bold"></td></tr>
+                    <tr><th>{{ __('Stock Status') }}</th><td id="viewProductStock"></td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section('js')
 <script>
+    // View Product Modal
+    document.querySelectorAll('.view-product-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var img = document.getElementById('viewProductImage');
+            var imgContainer = document.getElementById('viewProductImageContainer');
+            img.src = this.dataset.productImage || '';
+            img.alt = this.dataset.productName || '';
+            imgContainer.style.display = img.src ? 'block' : 'none';
+            document.getElementById('viewProductName').textContent = this.dataset.productName || '-';
+            document.getElementById('viewProductDescription').textContent = this.dataset.productDescription || '-';
+            document.getElementById('viewProductPrice').textContent = this.dataset.productPrice || 'N/A';
+            document.getElementById('viewProductStock').innerHTML = '<span class="badge ' + (this.dataset.productStock === 'Inactive' ? 'badge-danger' : 'badge-success') + '">' + this.dataset.productStock + '</span>';
+            $('#viewProductModal').modal('show');
+        });
+    });
+
     document.getElementById('syncCatalogBtn').addEventListener('click', function() {
         var btn = this;
         btn.disabled = true;

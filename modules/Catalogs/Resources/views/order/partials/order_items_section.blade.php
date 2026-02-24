@@ -6,35 +6,25 @@
 @endphp
 
 <!-- Order Items Card -->
-<div class="card mb-5">
-    <div class="card-header border-0 pt-5">
-        <h3 class="card-title align-items-start flex-column">
-            <span class="card-label fw-bold fs-3 mb-1">{{ __('Order Items') }}</span>
-            <span class="text-muted mt-1 fw-semibold fs-7">{{ __('Products in this order') }}</span>
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-transparent border-0 py-4">
+        <h3 class="card-title mb-0">
+            <span class="font-weight-bold text-dark">{{ __('Order Items') }}</span>
+            <span class="text-muted small d-block mt-1">{{ __('Products in this order') }}</span>
         </h3>
         <div class="card-toolbar">
             <button type="button" class="btn btn-sm btn-danger manual-cancel-order-btn"
                 data-payment-status="{{ $order->payment_status }}" @if ($freezeOperations) disabled @endif>
-                <i class="ki-duotone ki-truck fs-2 me-2">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                </i>
-                {{ __('Cancel Order') }}
+                <i class="ni ni-fat-remove mr-1"></i> {{ __('Cancel Order') }}
             </button>
             <button type="button" class="btn btn-sm btn-primary ms-2 add-item-btn" id="add-item-btn"
                 @if ($freezeOperations) disabled @endif>
-                <i class="ki-duotone ki-plus fs-2 me-1"></i> Add New Item
+                <i class="ni ni-fat-add mr-1"></i> {{ __('Add New Item') }}
             </button>
-            <button type="button" class="btn btn-sm btn-light-primary ms-2" data-bs-toggle="tooltip"
-                data-bs-placement="top" title="Print order receipt" onclick="printBasicReceipt('{{ $order->id }}')"
+            <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-toggle="tooltip"
+                title="{{ __('Print receipt') }}" onclick="printBasicReceipt('{{ $order->id }}')"
                 @if ($freezeOperations) disabled @endif>
-                <i class="ki-duotone ki-printer">
-                    <span class="path1"></span>
-                    <span class="path2"></span>
-                    <span class="path3"></span>
-                    <span class="path4"></span>
-                    <span class="path5"></span>
-                </i>
+                <i class="ni ni-printer mr-1"></i> {{ __('Print') }}
             </button>
         </div>
     </div>
@@ -65,37 +55,29 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center position-relative">
-                                        <div class="symbol symbol-50px me-5 position-relative">
-                                            <button
-                                                class="btn btn-icon btn-sm btn-danger position-absolute top-0 start-0 translate-middle delete-item-btn"
+                                        <div class="order-item-thumb me-3 position-relative flex-shrink-0">
+                                            <button type="button"
+                                                class="btn btn-icon btn-sm btn-danger delete-item-btn position-absolute rounded-circle"
                                                 data-item-id="{{ $item->id }}" data-item-name="{{ $item->name }}"
-                                                style="z-index: 10; width: 22px; height: 22px; padding: 0; border-radius: 50%;"
+                                                style="z-index: 2; width: 20px; height: 20px; padding: 0; top: -6px; right: -6px; font-size: 10px;"
                                                 @if ($freezeOperations) disabled @endif>
-                                                <i class="ki-duotone ki-cross-circle fs-6">
-                                                    <span class="path1"></span>
-                                                    <span class="path2"></span>
-                                                </i>
+                                                <i class="ni ni-fat-remove"></i>
                                             </button>
                                             @if ($catalogproduct && $catalogproduct->image_url)
                                                 <img src="{{ $catalogproduct->image_url }}"
                                                     alt="{{ $catalogproduct->product_name }}"
-                                                    class="h-20 align-self-center">
+                                                    class="rounded" style="width: 48px; height: 48px; object-fit: cover;">
                                             @else
-                                                <span class="symbol-label bg-light-primary">
-                                                    <i class="ki-duotone ki-bag fs-2x text-primary">
-                                                        <span class="path1"></span>
-                                                        <span class="path2"></span>
-                                                    </i>
-                                                </span>
+                                                <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted" style="width: 48px; height: 48px;">
+                                                    <i class="ni ni-box-2" style="font-size: 1.25rem;"></i>
+                                                </div>
                                             @endif
                                         </div>
-                                        <div class="d-flex flex-column">
-                                            <span
-                                                class="text-gray-800 fw-bold fs-7">{{ $catalogproduct->product_name ?? 'Product not found' }}</span>
-                                            <span class="text-muted fs-7">SKU: {{ $item->retailer_id }}</span>
+                                        <div class="d-flex flex-column min-w-0">
+                                            <span class="text-dark font-weight-bold">{{ $catalogproduct->product_name ?? 'Product not found' }}</span>
+                                            <span class="text-muted small">SKU: {{ $item->retailer_id }}</span>
                                             @if ($category)
-                                                <span
-                                                    class="badge badge-light-info mt-1 fs-7">{{ $category->name }}</span>
+                                                <span class="badge badge-info badge-sm mt-1">{{ $category->name }}</span>
                                             @endif
                                         </div>
                                     </div>
@@ -107,7 +89,7 @@
                                             data-action="decrease" data-item-id="{{ $item->id }}"
                                             style="width: 24px; height: 24px; padding: 0;"
                                             @if ($freezeOperations) disabled @endif>
-                                            <i class="ki-duotone ki-minus fs-5"></i>
+                                            <i class="ni ni-bold-left"></i>
                                         </button>
                                         <span class="item-quantity mx-2">{{ $item->quantity }}</span>
                                         <button
@@ -115,7 +97,7 @@
                                             data-action="increase" data-item-id="{{ $item->id }}"
                                             style="width: 24px; height: 24px; padding: 0;"
                                             @if ($freezeOperations) disabled @endif>
-                                            <i class="ki-duotone ki-plus fs-5"></i>
+                                            <i class="ni ni-bold-right"></i>
                                         </button>
                                     </div>
                                 </td>

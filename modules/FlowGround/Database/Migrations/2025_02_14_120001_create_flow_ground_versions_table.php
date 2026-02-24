@@ -13,14 +13,16 @@ class CreateFlowGroundVersionsTable extends Migration
      */
     public function up()
     {
-        Schema::create('flow_ground_versions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('flow_ground_id')->constrained('flow_grounds')->onDelete('cascade');
-            $table->unsignedInteger('version')->default(1);
-            $table->json('flow_json');
-            $table->boolean('synced_to_meta')->default(false);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('flow_ground_versions')) {
+            Schema::create('flow_ground_versions', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('flow_ground_id')->constrained('flow_grounds')->onDelete('cascade');
+                $table->unsignedInteger('version')->default(1);
+                $table->json('flow_json');
+                $table->boolean('synced_to_meta')->default(false);
+                $table->timestamps();
+            });
+        }
     }
 
     /**

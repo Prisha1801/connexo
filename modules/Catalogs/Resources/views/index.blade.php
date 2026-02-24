@@ -4,8 +4,11 @@
 <div class="card-body">
     <div class="row align-items-center">
         <div class="col-12">
-            <a href="{{ route('catalog.fetchCatalog') }}" class="btn btn-sm btn-primary rounded-lg px-4">
+            <button type="button" class="btn btn-sm btn-primary rounded-lg px-4" id="syncCatalogIndexBtn">
                 <i class="ni ni-refresh mr-2"></i> {{ __('Sync Catalog') }}
+            </button>
+            <a href="{{ route('catalog.productsCatalog') }}" class="btn btn-sm btn-light-primary rounded-lg px-4 ml-2">
+                <i class="ni ni-credit-card mr-2"></i> {{ __('View Products') }}
             </a>
         </div>
     </div>
@@ -34,9 +37,9 @@
             <td>{{ $products_count }}</td>
             <td>
                 @if($catalog->status)
-                    <span class="badge badge-danger">{{ __('Disabled') }}</span>
-                @else
                     <span class="badge badge-success">{{ __('Enabled') }}</span>
+                @else
+                    <span class="badge badge-danger">{{ __('Disabled') }}</span>
                 @endif
             </td>
         </tr>
@@ -44,7 +47,26 @@
 @endsection
 
 @section('js')
+<style>.spin{animation:spin 1s linear infinite}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
 <script>
+    document.getElementById('syncCatalogIndexBtn')?.addEventListener('click', function() {
+        var btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ni ni-refresh spin mr-2"></i> {{ __('Syncing...') }}';
+        fetch("{{ route('catalog.fetchCatalog') }}", {
+            method: "POST",
+            headers: { "X-Requested-With": "XMLHttpRequest", "X-CSRF-TOKEN": "{{ csrf_token() }}" }
+        }).then(r => r.json()).then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ni ni-refresh mr-2"></i> {{ __('Sync Catalog') }}';
+            alert(data.message || (data.status === 'success' ? 'Synced successfully' : 'Error'));
+            if (data.status === 'success') window.location.reload();
+        }).catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ni ni-refresh mr-2"></i> {{ __('Sync Catalog') }}';
+            alert('{{ __("Sync failed") }}');
+        });
+    });
     $(document).ready(function() {
         $('.select-catalog').change(function() {
             var url = "{{ route('catalog.index') }}";

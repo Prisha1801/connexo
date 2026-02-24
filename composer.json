@@ -45,6 +45,7 @@
         "spatie/laravel-translatable": "^6.3",
         "spatie/laravel-welcome-notification": "^2.3",
         "spatie/opening-hours": "^2.13",
+        "tecnickcom/tcpdf": "^6.10",
         "tinymce/tinymce": "^6.4",
         "willvincent/laravel-rateable": "^3.2",
         "yajra/laravel-datatables-oracle": "^10.11"

@@ -18,6 +18,11 @@ class Order extends Model
         return $this->hasMany(OrderItem::class, 'order_id');
     }
 
+    public function deliveryAgent()
+    {
+        return $this->belongsTo(DeliveryAgent::class, 'delivery_agent_id');
+    }
+
     protected static function booted()
     {
         static::addGlobalScope(new CompanyScope);

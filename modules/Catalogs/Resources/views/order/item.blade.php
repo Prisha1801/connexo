@@ -1,115 +1,142 @@
 @extends('general.index', $setup)
 
 @section('content')
-    {{-- In Blade template --}}
     @php
-        // Define frozen states based on order status and payment status
         $freezeOperations =
             in_array($order->status, ['delivered', 'dispatched', 'preparing', 'ready_to_dispatch', 'canceled']) ||
             in_array($order->payment_status, ['Refunded', 'Failed']);
-
         $freezeSpecific =
-            in_array($order->status, [
-                'delivered',
-                'dispatched',
-                'preparing',
-                'ready_to_dispatch',
-                'canceled',
-            ]);
-
+            in_array($order->status, ['delivered', 'dispatched', 'preparing', 'ready_to_dispatch', 'canceled']);
     @endphp
-    <!--begin::Container-->
-    <div class="container-xxl">
-        <!--begin::Row-->
-        <!-- Status Bar -->
-        <div id="status-bar-container">
+    <div class="header bg-gradient-primary pb-6 pt-5 pt-md-6">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb breadcrumb-dark breadcrumb-transparent bg-transparent mb-0">
+                            <li class="breadcrumb-item"><a href="{{ route('catalog.orderIndex') }}">{{ __('Orders') }}</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">#{{ $order->reference_id }}</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h2 text-white mb-0 mt-2">{{ __('Order') }} #{{ $order->reference_id }}</h1>
+                    <p class="text-white opacity-8 mb-0">{{ $order->user_name }} · {{ $order->created_at->format('d M Y, H:i') }}</p>
+                </div>
+                <div class="col-auto">
+                    <a href="{{ route('catalog.orderIndex') }}" class="btn btn-sm btn-white">
+                        <i class="ni ni-bold-left mr-2"></i>{{ __('Back to Orders') }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid mt--6 px-lg-4">
+        @include('partials.flash')
+
+        @php
+            $statusTexts = [
+                'order' => 'Pending',
+                'accepted' => 'Accepted',
+                'preparing' => 'Preparing',
+                'ready_to_dispatch' => 'Ready to Dispatch',
+                'dispatched' => 'Dispatched',
+                'delivered' => 'Delivered',
+                'canceled' => 'Canceled',
+            ];
+            $statusLabel = $statusTexts[$order->status] ?? ucwords(str_replace('_', ' ', $order->status));
+            $finalAmount = ($order->subtotal_offset ?? 1) != 0 ? $order->subtotal_value / $order->subtotal_offset : 0;
+            $shipping = $order->shipping_cast ?? 0;
+            $discountType = $order->discount_type ?? null;
+            $discountValue = $order->discount ?? 0;
+            $discountAmount = 0;
+            if ($discountType && $discountValue > 0) {
+                $discountAmount = $discountType === 'percent' ? ($finalAmount * $discountValue) / 100 : min($discountValue, $finalAmount);
+            }
+            $orderTotal = $finalAmount - $discountAmount + $shipping;
+        @endphp
+
+        <!-- Summary strip -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card card-body shadow-sm py-3 border-0">
+                    <div class="row align-items-center">
+                        <div class="col-md-3 col-6 mb-2 mb-md-0">
+                            <span class="text-muted small d-block">{{ __('Status') }}</span>
+                            <span class="badge badge-{{ $order->status == 'canceled' ? 'danger' : ($order->status == 'delivered' ? 'success' : 'primary') }}">{{ $statusLabel }}</span>
+                        </div>
+                        <div class="col-md-3 col-6 mb-2 mb-md-0">
+                            <span class="text-muted small d-block">{{ __('Payment') }}</span>
+                            <span class="badge badge-{{ ($order->payment_status ?? '') === 'Paid' ? 'success' : 'warning' }}">{{ $order->payment_status ?? 'Pending' }}</span>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <span class="text-muted small d-block">{{ __('Order total') }}</span>
+                            <span class="h5 mb-0 text-dark font-weight-bold">₹{{ number_format($orderTotal, 2) }}</span>
+                        </div>
+                        <div class="col-md-3 col-6 text-md-right">
+                            <a href="{{ route('catalog.itemEdit', $order->id) }}" class="btn btn-sm btn-outline-primary">{{ __('Edit Address') }}</a>
+                            <button type="button" class="btn btn-sm btn-primary ml-1" data-toggle="modal" data-target="#printInvoiceModal" data-order-id="{{ $order->id }}"><i class="ni ni-printer mr-1"></i> {{ __('Print') }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status alert (canceled / delivered only) -->
+        <div id="status-bar-container" class="mb-4">
             @if ($order->status == 'canceled')
-                <div class="alert alert-danger d-flex justify-content-between align-items-center py-3 mb-2">
-                    <div>
-                        <i class="ki-duotone ki-information fs-2x me-2"><span class="path1"></span><span
-                                class="path2"></span><span class="path3"></span></i>
-                        <strong>Order Cancelled</strong> -
-                        Reason: {{ $order->cancel_reason }} -
-                        {{ \Carbon\Carbon::parse($order->updated_at)->format('d-M-Y H:i') }}
-                    </div>
-                    <div>
-                        <span class="badge badge-light-danger fs-6 fw-bold py-2 px-3">CANCELLED</span>
-                    </div>
+                <div class="alert alert-danger py-3 mb-0">
+                    <i class="ni ni-notification-70 me-2"></i>
+                    <strong>{{ __('Order Cancelled') }}</strong> — {{ $order->cancel_reason ?? 'N/A' }}
+                    <span class="text-muted">· {{ \Carbon\Carbon::parse($order->updated_at)->format('d M Y, H:i') }}</span>
                 </div>
             @elseif ($order->status == 'delivered')
-                <div class="alert alert-success d-flex justify-content-between align-items-center py-3 mb-2">
-                    <div>
-                        <i class="ki-duotone ki-check-circle fs-2x me-2"><span class="path1"></span><span
-                                class="path2"></span></i>
-                        <strong>Order Delivered</strong> -
-                        Tracking Number: {{ $order->tracking_number ?? 'N/A' }} -
-                        Delivered at: {{ \Carbon\Carbon::parse($order->delivery_datetime)->format('d-M-Y H:i') }}
-                    </div>
-                    <div>
-                        <span class="badge badge-light-success fs-6 fw-bold py-2 px-3">DELIVERED</span>
-                    </div>
-                </div>
-            @else
-                @php
-                    $statusTexts = [
-                        'order' => 'Pending',
-                        'accepted' => 'Accepted',
-                        'preparing' => 'Preparing',
-                        'ready_to_dispatch' => 'Ready to Dispatch',
-                        'dispatched' => 'Dispatched',
-                    ];
-                    $statusText = $statusTexts[$order->status] ?? ucwords(str_replace('_', ' ', $order->status));
-                @endphp
-                <div class="alert alert-info d-flex justify-content-between align-items-center py-3 mb-2">
-                    <div>
-                        <i class="ki-duotone ki-information fs-2x me-2"><span class="path1"></span><span
-                                class="path2"></span><span class="path3"></span></i>
-                        <strong>Order Status:</strong> {{ $statusText }}
-                    </div>
-                    <div>
-                        <span class="badge badge-light-info fs-6 fw-bold py-2 px-3">{{ strtoupper($statusText) }}</span>
-                    </div>
+                <div class="alert alert-success py-3 mb-0">
+                    <i class="ni ni-check-bold me-2"></i>
+                    <strong>{{ __('Delivered') }}</strong> — {{ __('Tracking') }}: {{ $order->tracking_number ?? 'N/A' }}
+                    @if($order->delivery_datetime)
+                        <span class="text-muted">· {{ \Carbon\Carbon::parse($order->delivery_datetime)->format('d M Y, H:i') }}</span>
+                    @endif
                 </div>
             @endif
         </div>
-        <div class="row g-5">
-            <!-- Order Details Column -->
-            <div class="col-lg-6">
+
+        <div class="row">
+            <!-- Left: Customer, Payment, Status, Shipping -->
+            <div class="col-lg-5 col-xl-4 order-2 order-lg-1">
                 @if ($order->status == 'delivered')
-                    <div class="card mb-5">
-                        <div class="card-body">
-                            <h4 class="fw-bold text-gray-800 mb-4">Delivery Information</h4>
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body py-4">
+                            <h5 class="font-weight-bold text-dark mb-3">{{ __('Delivery Information') }}</h5>
                             <div class="row">
                                 <div class="col-md-4">
-                                    <div class="d-flex align-items-center mb-4">
-                                        <i class="ki-duotone ki-truck fs-2x text-success me-4"></i>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="ni ni-delivery-fast text-success mr-3" style="font-size: 1.25rem;"></i>
                                         <div>
-                                            <div class="fs-5 fw-bold">{{ $order->delivery_partner ?? 'N/A' }}</div>
-                                            <div class="text-muted">Delivery Partner</div>
+                                            <span class="font-weight-bold">{{ $order->delivery_partner ?? 'N/A' }}</span>
+                                            <span class="text-muted small d-block">{{ __('Delivery partner') }}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="d-flex align-items-center mb-4">
-                                        <i class="ki-duotone ki-barcode fs-2x text-info me-4"></i>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="ni ni-box-2 text-info mr-3" style="font-size: 1.25rem;"></i>
                                         <div>
-                                            <div class="fs-5 fw-bold">{{ $order->tracking_number ?? 'N/A' }}</div>
-                                            <div class="text-muted">Tracking Number</div>
+                                            <span class="font-weight-bold">{{ $order->tracking_number ?? 'N/A' }}</span>
+                                            <span class="text-muted small d-block">{{ __('Tracking number') }}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="d-flex align-items-center mb-4">
-                                        <i class="ki-duotone ki-calendar-8 fs-2x text-warning me-4"></i>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="ni ni-calendar-grid-58 text-warning mr-3" style="font-size: 1.25rem;"></i>
                                         <div>
-                                            <div class="fs-5 fw-bold">
+                                            <span class="font-weight-bold">
                                                 @if ($order->delivery_datetime)
-                                                    {{ \Carbon\Carbon::parse($order->delivery_datetime)->format('d-M-Y H:i') }}
+                                                    {{ \Carbon\Carbon::parse($order->delivery_datetime)->format('d M Y, H:i') }}
                                                 @else
                                                     N/A
                                                 @endif
-                                            </div>
-                                            <div class="text-muted">Delivery Date & Time</div>
+                                            </span>
+                                            <span class="text-muted small d-block">{{ __('Delivery date & time') }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -119,11 +146,11 @@
                 @endif
 
                 <!-- Order Details Card -->
-                <div class="card mb-5">
-                    <div class="card-header border-0 pt-5">
-                        <div class="card-title align-items-start flex-column">
-                            <span class="card-label fw-bold fs-3 mb-1">Order Details</span>
-                            <span class="text-muted mt-1 fw-semibold fs-7">Order #{{ $order->reference_id }}</span>
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-transparent border-0 py-4">
+                        <div class="card-title mb-0">
+                            <span class="font-weight-bold text-dark">{{ __('Order Details') }}</span>
+                            <span class="text-muted small d-block">#{{ $order->reference_id }}</span>
 
                             <!-- WhatsApp Window Status -->
                             @if ($lastContactReply)
@@ -136,16 +163,10 @@
                                         <!-- Action Buttons Container -->
                                         <div class="mt-2 d-flex gap-2">
                                             <button id="refresh-window-btn" class="btn btn-sm btn-light-primary">
-                                                <i class="ki-duotone ki-abstract-8">
-                                                    <span class="path1"></span>
-                                                    <span class="path2"></span>
-                                                </i>
+                                                <i class="ni ni-refresh"></i>
                                             </button>
                                             <button id="send-template-btn" class="btn btn-sm btn-light-success">
-                                                <i class="ki-duotone ki-send">
-                                                    <span class="path1"></span>
-                                                    <span class="path2"></span>
-                                                </i>Send Template Message
+                                                <i class="ni ni-send me-1"></i> Send Template Message
                                             </button>
                                         </div>
                                     @elseif(is_array($windowStatus))
@@ -166,15 +187,6 @@
                                 </div>
                             @endif
                         </div>
-                        <div class="card-toolbar">
-                            <a href="{{ route('catalog.orderINdex') }}" class="btn btn-sm btn-light-primary">
-                                <i class="ki-duotone ki-arrow-left fs-2 me-2">
-                                    <span class="path1"></span>
-                                    <span class="path2"></span>
-                                </i>
-                                Back to Orders
-                            </a>
-                        </div>
                     </div>
                     <div class="card-body pt-0">
                         <form id="order-update-form" method="post" autocomplete="off" enctype="multipart/form-data"
@@ -183,65 +195,57 @@
                             <div class="d-flex flex-column gap-5">
                                 <!-- Customer Details -->
                                 <div class="d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-center mb-4">
-                                        <h4 class="fw-bold text-gray-800 mb-0">Customer Information</h4>
-                                        <button type="button"
-                                            class="btn btn-icon btn-bg-light btn-active-color-primary btn-sm"
-                                            data-bs-toggle="modal" data-bs-target="#contactModal"
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="font-weight-bold text-dark mb-0">{{ __('Customer Information') }}</h5>
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-toggle="modal" data-target="#contactModal"
                                             @if ($freezeOperations) disabled @endif>
-                                            <i class="ki-duotone ki-pencil fs-2">
-                                                <span class="path1"></span>
-                                                <span class="path2"></span>
-                                            </i>
+                                            <i class="ni ni-ruler-pencil mr-1"></i> {{ __('Edit Contact') }}
                                         </button>
                                     </div>
 
-                                    <div class="d-flex align-items-center mb-4">
-                                        <i class="ki-duotone ki-user fs-2x text-primary me-4"></i>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="ni ni-single-02 text-primary mr-3" style="font-size: 1.25rem;"></i>
                                         <div>
-                                            <div class="fs-5 fw-bold customer-name-display">{{ $order->user_name }}</div>
-                                            <div class="text-muted">Customer Name</div>
+                                            <span class="font-weight-bold customer-name-display">{{ $order->user_name }}</span>
+                                            <span class="text-muted small d-block">{{ __('Customer') }}</span>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-center mb-4">
-                                        <i class="ki-duotone ki-phone fs-2x text-success me-4"></i>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="ni ni-mobile-button text-success mr-3" style="font-size: 1.25rem;"></i>
                                         <div>
-                                            <div class="fs-5 fw-bold">{{ $order->phone_number }}</div>
-                                            <div class="text-muted">Phone Number</div>
+                                            <span class="font-weight-bold">{{ $order->phone_number }}</span>
+                                            <span class="text-muted small d-block">{{ __('Phone') }}</span>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-center mb-4">
-                                        <i class="ki-duotone ki-calendar-8 fs-2x text-info me-4"></i>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="ni ni-calendar-grid-58 text-info mr-3" style="font-size: 1.25rem;"></i>
                                         <div>
-                                            <div class="fs-5 fw-bold">{{ $order->created_at->format('d-M-Y') }}</div>
-                                            <div class="text-muted">Order Date</div>
+                                            <span class="font-weight-bold">{{ $order->created_at->format('d M Y') }}</span>
+                                            <span class="text-muted small d-block">{{ __('Order date') }}</span>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-center mb-4">
-                                        <i class="ki-duotone ki-document fs-2x text-warning me-4"></i>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="ni ni-single-copy-04 text-warning mr-3" style="font-size: 1.25rem;"></i>
                                         <div>
-                                            <div class="fs-5 fw-bold">{{ $order->reference_id }}</div>
-                                            <div class="text-muted">Order Number</div>
+                                            <span class="font-weight-bold">{{ $order->reference_id }}</span>
+                                            <span class="text-muted small d-block">{{ __('Order number') }}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Payment Details -->
                                 <div class="d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-center mb-4">
-                                        <h4 class="fw-bold text-gray-800">Payment Details</h4>
-                                        <button type="button" class="btn btn-sm btn-light-primary"
-                                            data-bs-toggle="modal" data-bs-target="#paymentModal"
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="font-weight-bold text-dark mb-0">{{ __('Payment Details') }}</h5>
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-toggle="modal" data-target="#paymentModal"
                                             @if ($freezeSpecific) disabled @endif>
-                                            <i class="ki-duotone ki-pencil fs-2 me-1">
-                                                <span class="path1"></span>
-                                                <span class="path2"></span>
-                                            </i>
-                                            Edit Payment
+                                            <i class="ni ni-ruler-pencil mr-1"></i> {{ __('Edit Payment') }}
                                         </button>
                                     </div>
 
-                                    <div class="bg-light-primary rounded p-5 mb-5">
+                                    <div class="bg-light-primary rounded p-5 mb-4">
                                         <div class="row g-4">
                                             <div class="col-md-6">
                                                 <div class="fw-bold">Transaction ID:</div>
@@ -270,10 +274,10 @@
 
                                 <!-- Order Status Section -->
                                 <div class="d-flex flex-column mb-5">
-                                    <h4 class="fw-bold text-gray-800 mb-4">Order Status</h4>
+                                    <h5 class="font-weight-bold text-dark mb-3">{{ __('Order Status') }}</h5>
                                     <div class="d-flex align-items-center gap-5">
                                         <div class="w-100">
-                                            <select class="form-select form-select-solid" id="order-status-select"
+                                            <select class="form-control" id="order-status-select"
                                                 data-order-id="{{ $order->id }}"
                                                 @if (in_array($order->payment_status, ['Refunded', 'Failed'])) disabled @endif>
                                                 <option value="order" {{ $order->status == 'order' ? 'selected' : '' }}>
@@ -296,17 +300,10 @@
                                         </div>
                                         <div>
                                             <button type="button"
-                                                class="btn btn-icon btn-bg-light btn-active-color-danger btn-sm"
-                                                data-bs-toggle="modal" data-bs-target="#printInvoiceModal"
-                                                data-order-id="{{ $order->id }}" title="Print Invoice"
-                                                @if ($freezeOperations) disabled @endif>
-                                                <i class="ki-duotone ki-printer">
-                                                    <span class="path1"></span>
-                                                    <span class="path2"></span>
-                                                    <span class="path3"></span>
-                                                    <span class="path4"></span>
-                                                    <span class="path5"></span>
-                                                </i>
+                                                class="btn btn-sm btn-success"
+                                                data-toggle="modal" data-target="#printInvoiceModal"
+                                                data-order-id="{{ $order->id }}" title="{{ __('Print Invoice') }}">
+                                                <i class="ni ni-printer mr-1"></i> {{ __('Print') }}
                                             </button>
                                         </div>
                                     </div>
@@ -315,17 +312,18 @@
 
                                 <!-- Shipping Information -->
                                 <div class="d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-center mb-4">
-                                        <h4 class="fw-bold text-gray-800">Shipping Information</h4>
-                                        <button type="button" class="btn btn-sm btn-light-primary"
-                                            data-bs-toggle="modal" data-bs-target="#shippingModal"
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h5 class="font-weight-bold text-dark mb-0">{{ __('Shipping Information') }}</h5>
+                                        <div class="d-flex gap-2">
+                                        <a href="{{ route('catalog.itemEdit', $order->id) }}" class="btn btn-sm btn-primary">
+                                            <i class="ni ni-ruler-pencil me-1"></i> {{ __('Edit Address') }}
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-toggle="modal" data-target="#shippingModal"
                                             @if ($freezeSpecific) disabled @endif>
-                                            <i class="ki-duotone ki-pencil fs-2 me-1">
-                                                <span class="path1"></span>
-                                                <span class="path2"></span>
-                                            </i>
-                                            Edit Shipping
+                                            <i class="ni ni-delivery-fast me-1"></i> {{ __('Edit Shipping') }}
                                         </button>
+                                    </div>
                                     </div>
 
                                     <div class="bg-light-primary rounded p-5 mb-5">
@@ -378,13 +376,33 @@
                                         </div>
                                     </div>
 
+                                    <!-- Delivery Agent -->
+                                    <div class="d-flex flex-column mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <h6 class="font-weight-bold text-dark mb-0">{{ __('Delivery Agent') }}</h6>
+                                        </div>
+                                        <form method="post" action="{{ route('catalog.assignDeliveryAgent', $order) }}" class="form-inline">
+                                            @csrf
+                                            <div class="form-group mr-2 mb-2">
+                                                <select name="delivery_agent_id" class="form-control form-control-sm" @if($freezeOperations) disabled @endif>
+                                                    <option value="">{{ __('Not assigned') }}</option>
+                                                    @foreach($deliveryAgents as $agent)
+                                                        <option value="{{ $agent->id }}" @if($order->delivery_agent_id == $agent->id) selected @endif>
+                                                            {{ $agent->name }} @if($agent->phone) ({{ $agent->phone }}) @endif
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="btn btn-sm btn-outline-primary mb-2" @if($freezeOperations) disabled @endif>
+                                                <i class="ni ni-check-bold mr-1"></i> {{ __('Save') }}
+                                            </button>
+                                        </form>
+                                    </div>
+
                                     <button type="button" class="btn btn-sm btn-light-success ms-2"
                                         id="resendAddressFormBtn" @if ($freezeOperations) disabled @endif>
-                                        <i class="ki-duotone ki-reload fs-2 me-1">
-                                            <span class="path1"></span>
-                                            <span class="path2"></span>
-                                        </i>
-                                        Re-request Address
+                                        <i class="ni ni-refresh me-1"></i>
+                                        {{ __('Re-request Address') }}
                                     </button>
                                 </div>
                             </div>
@@ -393,52 +411,29 @@
                 </div>
             </div>
 
-            <!-- Product Details Column -->
-            <div class="col-lg-6">
-                <!-- Order Items Card -->
-                <div id="order-items-section">
+            <!-- Right: Order Items + Instructions (main content first on desktop) -->
+            <div class="col-lg-7 col-xl-8 order-1 order-lg-2">
+                <div id="order-items-section" class="mb-4">
                     @include('Catalogs::order.partials.order_items_section')
                 </div>
-            </div>
-
-            <!-- Order Process Note Section -->
-            <div class="card mb-5">
-                <div class="card-header border-0 pt-5">
-                    <h3 class="card-title align-items-start flex-column">
-                        <span class="card-label fw-bold fs-3 mb-1">Order Instructions</span>
-                        <span class="text-muted mt-1 fw-semibold fs-7">Special requests from customer</span>
-                    </h3>
-                </div>
-                <div class="card-body pt-0">
-                    <div class="d-flex flex-column">
-                        <div class="mb-5">
-                            <div class="d-flex align-items-center">
-                                <i class="ki-duotone ki-note fs-2x text-info me-4">
-                                    <span class="path1"></span>
-                                    <span class="path2"></span>
-                                    <span class="path3"></span>
-                                </i>
-                                <div>
-                                    @if ($order->order_process_note)
-                                        <div class="fs-5 fw-bold">{{ $order->order_process_note }}</div>
-                                        <div class="text-muted">Customer's special instructions</div>
-                                    @else
-                                        <div class="fs-5 fw-bold text-muted">No special instructions provided</div>
-                                        <div class="text-muted">Customer didn't add any notes</div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-
+                <!-- Order Instructions -->
+                <div class="card shadow-sm mb-4 order-instructions-card">
+                    <div class="card-header bg-transparent border-0 py-4">
+                        <h3 class="card-title mb-0">
+                            <span class="font-weight-bold text-dark">{{ __('Order Instructions') }}</span>
+                            <span class="text-muted small d-block mt-1">{{ __('Special requests from customer') }}</span>
+                        </h3>
+                    </div>
+                    <div class="card-body pt-0">
+                        @if ($order->order_process_note)
+                            <p class="mb-0 text-dark">{{ $order->order_process_note }}</p>
+                        @else
+                            <p class="mb-0 text-muted">{{ __('No special instructions provided.') }}</p>
+                        @endif
                         @if (!$freezeOperations)
-                            <div class="d-flex justify-content-end">
-                                <button type="button" class="btn btn-sm btn-light-primary" data-bs-toggle="modal"
-                                    data-bs-target="#orderNoteModal">
-                                    <i class="ki-duotone ki-pencil fs-2 me-1">
-                                        <span class="path1"></span>
-                                        <span class="path2"></span>
-                                    </i>
-                                    Update Instructions
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#orderNoteModal">
+                                    <i class="ni ni-ruler-pencil mr-1"></i> {{ __('Update Instructions') }}
                                 </button>
                             </div>
                         @endif
@@ -449,7 +444,7 @@
     </div>
     </div>
 
-    <!-- Modals (Shipping, Contact, Payment, Dispatch, Cancel Reason, Delivery Confirmation, Order Note) -->
+    <!-- Modals -->
     <!-- ... All modals remain unchanged ... -->
 
     <!-- Shipping Details Modal -->
@@ -460,17 +455,12 @@
                     @csrf
                     <div class="modal-header">
                         <h2 class="fw-bold">Update Shipping Details</h2>
-                        <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
-                            <i class="ki-duotone ki-cross fs-1">
-                                <span class="path1"></span>
-                                <span class="path2"></span>
-                            </i>
-                        </div>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body py-10 px-lg-17">
                         <div class="mb-5">
                             <label class="form-label fs-6 fw-semibold text-gray-700">Shipping Method</label>
-                            <select class="form-select form-select-solid" name="shipping_method" id="shipping_method">
+                            <select class="form-control" name="shipping_method" id="shipping_method">
                                 <option value="">Select Method</option>
                                 <option value="Self Pickup"
                                     {{ $order->shipping_method == 'Self Pickup' ? 'selected' : '' }}>Self Pickup</option>
@@ -492,69 +482,69 @@
                             <!-- Add tracking number field -->
                             <div class="mb-5">
                                 <label class="form-label fs-6 fw-semibold text-gray-700">Tracking Number</label>
-                                <input type="text" name="tracking_number" class="form-control form-control-solid"
+                                <input type="text" name="tracking_number" class="form-control"
                                     placeholder="Enter tracking number" value="{{ $order->tracking_number ?? '' }}">
                             </div>
                             <div class="row g-5">
                                 <div class="col-md-6">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">Name</label>
-                                    <input type="text" name="for_person" class="form-control form-control-solid"
+                                    <input type="text" name="for_person" class="form-control"
                                         placeholder="BRIJ" value="{{ $order->for_person }}" required>
                                 </div>
 
                                 <div class="col-md-6">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">Phone number</label>
                                     <input type="text" name="for_person_number"
-                                        class="form-control form-control-solid" placeholder="+9199XXXXXXXXX"
+                                        class="form-control" placeholder="+9199XXXXXXXXX"
                                         value="{{ $order->for_person_number }}" required>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">Full Address</label>
-                                    <textarea name="address" class="form-control form-control-solid" rows="3" placeholder="Full Address" required>{{ $order->address }}</textarea>
+                                    <textarea name="address" class="form-control" rows="3" placeholder="Full Address" required>{{ $order->address }}</textarea>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">House Number
                                         (Optional)</label>
-                                    <input type="text" name="house_number" class="form-control form-control-solid"
+                                    <input type="text" name="house_number" class="form-control"
                                         placeholder="House Number" value="{{ $order->house_number }}">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">Building Name
                                         (Optional)</label>
-                                    <input type="text" name="building_name" class="form-control form-control-solid"
+                                    <input type="text" name="building_name" class="form-control"
                                         placeholder="Building Name" value="{{ $order->building_name }}">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">Pin Code</label>
-                                    <input type="text" name="pin_code" class="form-control form-control-solid"
+                                    <input type="text" name="pin_code" class="form-control"
                                         placeholder="Pin Code" value="{{ $order->pin_code }}" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">Tower number
                                         (Optional)</label>
-                                    <input type="text" name="tower_number" class="form-control form-control-solid"
+                                    <input type="text" name="tower_number" class="form-control"
                                         placeholder="Tower Number" value="{{ $order->tower_number }}">
                                 </div>
                                 <div class="col-md-12">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">Landmark/Area</label>
-                                    <input type="text" name="landmark_area" class="form-control form-control-solid"
+                                    <input type="text" name="landmark_area" class="form-control"
                                         placeholder="Landmark Area" value="{{ $order->landmark_area }}" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">City</label>
-                                    <input type="text" name="city" class="form-control form-control-solid"
+                                    <input type="text" name="city" class="form-control"
                                         placeholder="City" value="{{ $order->city }}" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label fs-6 fw-semibold text-gray-700">State</label>
-                                    <input type="text" name="state" class="form-control form-control-solid"
+                                    <input type="text" name="state" class="form-control"
                                         placeholder="State" value="{{ $order->state }}" required>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer flex-center">
-                        <button type="button" class="btn btn-light me-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-light me-3" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary" id="update-shipping-btn">
                             <span class="indicator-label">Update Shipping</span>
                             <span class="indicator-progress">Please wait...
@@ -575,24 +565,19 @@
                     @csrf
                     <div class="modal-header">
                         <h2 class="fw-bold">Update Contact Information</h2>
-                        <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
-                            <i class="ki-duotone ki-cross fs-1">
-                                <span class="path1"></span>
-                                <span class="path2"></span>
-                            </i>
-                        </div>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body py-10 px-lg-17">
                         <div class="row g-5">
                             <div class="col-md-12">
                                 <label class="form-label fs-6 fw-semibold text-gray-700 required">Customer Name</label>
-                                <input type="text" name="user_name" class="form-control form-control-solid"
+                                <input type="text" name="user_name" class="form-control"
                                     placeholder="Customer Name" value="{{ $order->user_name }}" required>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer flex-center">
-                        <button type="button" class="btn btn-light me-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-light me-3" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary" id="update-contact-btn">
                             <span class="indicator-label">Update Contact</span>
                             <span class="indicator-progress">Please wait...
@@ -613,23 +598,18 @@
                     @csrf
                     <div class="modal-header">
                         <h2 class="fw-bold">Update Payment Details</h2>
-                        <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
-                            <i class="ki-duotone ki-cross fs-1">
-                                <span class="path1"></span>
-                                <span class="path2"></span>
-                            </i>
-                        </div>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body py-10 px-lg-17">
                         <div class="row g-5">
                             <div class="col-md-6">
                                 <label class="form-label fs-6 fw-semibold text-gray-700">Transaction ID</label>
-                                <input type="text" name="transaction_id" class="form-control form-control-solid"
+                                <input type="text" name="transaction_id" class="form-control"
                                     placeholder="Transaction ID" value="{{ $order->transaction_id }}">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fs-6 fw-semibold text-gray-700 required">Payment Method</label>
-                                <select class="form-select form-select-solid" name="transaction_type" required>
+                                <select class="form-control" name="transaction_type" required>
                                     <option value="">Select Method</option>
                                     <option value="UPI" {{ $order->transaction_type == 'UPI' ? 'selected' : '' }}>UPI
                                     </option>
@@ -644,7 +624,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fs-6 fw-semibold text-gray-700 required">Payment Status</label>
-                                <select class="form-select form-select-solid" name="payment_status" required>
+                                <select class="form-control" name="payment_status" required>
                                     <option value="">Select Status</option>
                                     <option value="Pending" {{ $order->payment_status == 'Pending' ? 'selected' : '' }}>
                                         Pending</option>
@@ -658,13 +638,13 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fs-6 fw-semibold text-gray-700">Currency</label>
-                                <input type="text" name="currency" class="form-control form-control-solid"
+                                <input type="text" name="currency" class="form-control"
                                     placeholder="Currency" value="{{ $order->currency ?? 'INR' }}" required>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer flex-center">
-                        <button type="button" class="btn btn-light me-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-light me-3" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary" id="update-payment-btn">
                             <span class="indicator-label">Update Payment</span>
                             <span class="indicator-progress">Please wait...
@@ -686,28 +666,23 @@
                     @csrf
                     <div class="modal-header">
                         <h2 class="fw-bold">Dispatch Order #{{ $order->reference_id }}</h2>
-                        <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
-                            <i class="ki-duotone ki-cross fs-1">
-                                <span class="path1"></span>
-                                <span class="path2"></span>
-                            </i>
-                        </div>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body py-10 px-lg-17">
                         <div class="mb-10">
                             <label class="form-label fs-6 fw-semibold text-gray-700 required">Message</label>
-                            <textarea rows="4" name="order_mess" class="form-control form-control-solid"
+                            <textarea rows="4" name="order_mess" class="form-control"
                                 placeholder="Enter dispatch message" required>{{ $Paymenttemplate ? $Paymenttemplate->order_message : '' }}</textarea>
                         </div>
 
                         <div class="mb-10">
                             <label class="form-label fs-6 fw-semibold text-gray-700 required">Tracking Number</label>
-                            <input type="text" name="number" class="form-control form-control-solid"
+                            <input type="text" name="number" class="form-control"
                                 placeholder="Enter tracking number" value="{{ $order->tracking_number ?? '' }}" required>
                         </div>
                     </div>
                     <div class="modal-footer flex-center">
-                        <button type="button" class="btn btn-light me-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-light me-3" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary">
                             <span class="indicator-label">Dispatch Order</span>
                             <span class="indicator-progress">Please wait...
@@ -727,12 +702,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 class="fw-bold">Cancel Order #{{ $order->reference_id }}</h2>
-                    <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
-                        <i class="ki-duotone ki-cross fs-1">
-                            <span class="path1"></span>
-                            <span class="path2"></span>
-                        </i>
-                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <form id="cancel-form">
                     <div class="modal-body py-10 px-lg-17">
@@ -754,12 +724,12 @@
                         <div class="mb-10">
                             <label class="form-label fs-6 fw-semibold text-gray-700 required">Reason for
                                 Cancellation</label>
-                            <textarea rows="4" name="cancel_reason" id="cancel-reason-text" class="form-control form-control-solid"
+                            <textarea rows="4" name="cancel_reason" id="cancel-reason-text" class="form-control"
                                 placeholder="Enter reason for cancellation" required></textarea>
                         </div>
                     </div>
                     <div class="modal-footer flex-center">
-                        <button type="button" class="btn btn-light me-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-light me-3" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-danger">
                             <span class="indicator-label">Confirm Cancellation</span>
                             <span class="indicator-progress">Please wait...
@@ -777,17 +747,12 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h2 class="fw-bold">Confirm Delivery for Order #{{ $order->reference_id }}</h2>
-                    <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
-                        <i class="ki-duotone ki-cross fs-1">
-                            <span class="path1"></span>
-                            <span class="path2"></span>
-                        </i>
-                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body py-10 px-lg-17">
                     <div class="mb-10">
                         <label class="form-label fs-6 fw-semibold text-gray-700 required">Delivery Note</label>
-                        <textarea rows="4" id="delivery-note-text" class="form-control form-control-solid"
+                        <textarea rows="4" id="delivery-note-text" class="form-control"
                             placeholder="Enter delivery notes (e.g., left at front desk)" required></textarea>
                     </div>
                     <div class="form-check form-check-custom form-check-solid">
@@ -798,7 +763,7 @@
                     </div>
                 </div>
                 <div class="modal-footer flex-center">
-                    <button type="button" class="btn btn-light me-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-light me-3" data-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="confirm-delivery-btn">
                         <span class="indicator-label">Confirm Delivery</span>
                         <span class="indicator-progress">Please wait...
@@ -819,24 +784,19 @@
                     @csrf
                     <div class="modal-header">
                         <h2 class="fw-bold">Update Order Instructions</h2>
-                        <div class="btn btn-icon btn-sm btn-active-icon-primary" data-bs-dismiss="modal">
-                            <i class="ki-duotone ki-cross fs-1">
-                                <span class="path1"></span>
-                                <span class="path2"></span>
-                            </i>
-                        </div>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body py-10 px-lg-17">
                         <div class="mb-10">
                             <label class="form-label fs-6 fw-semibold text-gray-700">Special Instructions</label>
-                            <textarea rows="4" name="order_process_note" class="form-control form-control-solid"
+                            <textarea rows="4" name="order_process_note" class="form-control"
                                 placeholder="Enter special instructions (e.g., prepare without spices, extra sauce)">{{ $order->order_process_note }}</textarea>
                             <div class="form-text">These notes will be visible to kitchen staff and delivery personnel
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer flex-center">
-                        <button type="button" class="btn btn-light me-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-light me-3" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary" id="update-note-btn">
                             <span class="indicator-label">Update Instructions</span>
                             <span class="indicator-progress">Please wait...
@@ -855,7 +815,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Select Print Format</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-5">
@@ -866,7 +826,7 @@
                                 <div class="card card-dashed cursor-pointer h-100 print-option" data-value="thermal">
                                     <div class="card-body text-center p-5">
                                         <div class="mb-5">
-                                            <i class="ki-outline ki-printer fs-4tx text-primary"></i>
+                                            <i class="ni ni-printer text-primary" style="font-size: 2rem;"></i>
                                         </div>
                                         <div class="fs-5 fw-bold">Thermal Printer</div>
                                         <div class="fs-7 text-muted">80mm Receipt</div>
@@ -882,7 +842,7 @@
                                 <div class="card card-dashed cursor-pointer h-100 print-option" data-value="full">
                                     <div class="card-body text-center p-5">
                                         <div class="mb-5">
-                                            <i class="ki-outline ki-document fs-4tx text-success"></i>
+                                            <i class="ni ni-single-copy-04 text-success" style="font-size: 2rem;"></i>
                                         </div>
                                         <div class="fs-5 fw-bold">A4 Print</div>
                                         <div class="fs-7 text-muted">Standard Document</div>
@@ -893,7 +853,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
                     <button id="confirmPrintBtn" type="button" class="btn btn-primary">Print Invoice</button>
                 </div>
             </div>
@@ -906,7 +866,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold text-gray-800">Add Products to Order #{{ $order->reference_id }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal"></button>
                 </div>
 
                 <div class="modal-body">
@@ -914,7 +874,7 @@
                     <div class="mb-5">
                         <div class="input-group input-group-solid">
                             <span class="input-group-text bg-light">
-                                <i class="ki-duotone ki-magnifier fs-2 text-gray-500"></i>
+                                <i class="ni ni-zoom-split-in text-muted"></i>
                             </span>
                             <input type="text" id="productSearch" class="form-control"
                                 placeholder="Search products..." />
@@ -938,7 +898,7 @@
                                             data-retailer-id="{{ $product->retailer_id }}"
                                             data-product-name="{{ $product->product_name }}"
                                             data-product-price="{{ $product->price }}">
-                                            <i class="ki-duotone ki-plus fs-2 me-1"></i> Add
+                                            <i class="ni ni-fat-add mr-1"></i> {{ __('Add') }}
                                         </button>
                                     </div>
                                 </div>
@@ -948,7 +908,7 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
                 </div>
             </div>
         </div>
@@ -960,7 +920,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold text-gray-800">Edit Order Item</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="edit-item-form">
@@ -976,19 +936,19 @@
                             <div class="col-md-6">
                                 <label class="form-label fs-6 fw-semibold text-gray-700 required">Quantity</label>
                                 <input type="number" name="quantity" id="edit-item-quantity"
-                                    class="form-control form-control-solid" min="1" required>
+                                    class="form-control" min="1" required>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label fs-6 fw-semibold text-gray-700 required">Price (₹)</label>
                                 <input type="number" name="price" id="edit-item-price" step="0.01"
-                                    class="form-control form-control-solid" min="0.01" required>
+                                    class="form-control" min="0.01" required>
                             </div>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="save-item-btn">Save Changes</button>
                 </div>
             </div>
@@ -1051,7 +1011,7 @@
         });
 
         function initTooltips() {
-            $('[data-bs-toggle="tooltip"]').tooltip();
+            $('[data-toggle="tooltip"]').tooltip();
         }
 
         $(document).ready(function() {
@@ -1127,8 +1087,8 @@
                 // Always freeze if serverFreezeOperations is true
 
                 if (serverFreezeSpecific) {
-                    $('[data-bs-target="#paymentModal"]').prop('disabled', false);
-                    $('[data-bs-target="#shippingModal"]').prop('disabled', true);
+                    $('[data-target="#paymentModal"]').prop('disabled', false);
+                    $('[data-target="#shippingModal"]').prop('disabled', true);
                 }
 
 
@@ -1139,9 +1099,9 @@
                     $('.quantity-btn').prop('disabled', true);
                     $('.add-item-btn').prop('disabled', true);
                     $('.delete-item-btn').prop('disabled', true);
-                    $('[data-bs-target="#dispatchModal"]').prop('disabled', true);
-                    $('[data-bs-target="#contactModal"]').prop('disabled', true);
-                    $('[data-bs-target="#orderNoteModal"]').prop('disabled', true);
+                    $('[data-target="#dispatchModal"]').prop('disabled', true);
+                    $('[data-target="#contactModal"]').prop('disabled', true);
+                    $('[data-target="#orderNoteModal"]').prop('disabled', true);
                     $('#resendAddressFormBtn').prop('disabled', true);
                     $('#apply-discount-btn').prop('disabled', true);
                     $('#resend-payment-link').prop('disabled', true);
@@ -1154,10 +1114,10 @@
                     $('.quantity-btn').prop('disabled', true);
                     $('.add-item-btn').prop('disabled', true);
                     $('.delete-item-btn').prop('disabled', true);
-                    $('[data-bs-target="#shippingModal"]').prop('disabled', true);
-                    $('[data-bs-target="#dispatchModal"]').prop('disabled', true);
-                    $('[data-bs-target="#contactModal"]').prop('disabled', true);
-                    $('[data-bs-target="#orderNoteModal"]').prop('disabled', true);
+                    $('[data-target="#shippingModal"]').prop('disabled', true);
+                    $('[data-target="#dispatchModal"]').prop('disabled', true);
+                    $('[data-target="#contactModal"]').prop('disabled', true);
+                    $('[data-target="#orderNoteModal"]').prop('disabled', true);
                     $('#resendAddressFormBtn').prop('disabled', true);
                     $('#apply-discount-btn').prop('disabled', true);
                     $('#resend-payment-link').prop('disabled', true);
@@ -1174,11 +1134,11 @@
                     $('.quantity-btn').prop('disabled', false);
                     $('.add-item-btn').prop('disabled', false);
                     $('.delete-item-btn').prop('disabled', false);
-                    $('[data-bs-target="#shippingModal"]').prop('disabled', false);
-                    $('[data-bs-target="#paymentModal"]').prop('disabled', false);
-                    $('[data-bs-target="#dispatchModal"]').prop('disabled', false);
-                    $('[data-bs-target="#contactModal"]').prop('disabled', false);
-                    $('[data-bs-target="#orderNoteModal"]').prop('disabled', false);
+                    $('[data-target="#shippingModal"]').prop('disabled', false);
+                    $('[data-target="#paymentModal"]').prop('disabled', false);
+                    $('[data-target="#dispatchModal"]').prop('disabled', false);
+                    $('[data-target="#contactModal"]').prop('disabled', false);
+                    $('[data-target="#orderNoteModal"]').prop('disabled', false);
                     $('#resendAddressFormBtn').prop('disabled', false);
                     $('#apply-discount-btn').prop('disabled', false);
                     $('#resend-payment-link').prop('disabled', false);
@@ -1808,11 +1768,11 @@
                 $('.btn-edit-shipping').prop('disabled', true);
                 $('.btn-dispatch-order').prop('disabled', true);
                 $('.manual-cancel-order-btn').prop('disabled', true);
-                $('[data-bs-target="#shippingModal"]').prop('disabled', true);
-                $('[data-bs-target="#paymentModal"]').prop('disabled', true);
-                $('[data-bs-target="#dispatchModal"]').prop('disabled', true);
-                $('[data-bs-target="#contactModal"]').prop('disabled', true);
-                $('[data-bs-target="#orderNoteModal"]').prop('disabled', true);
+                $('[data-target="#shippingModal"]').prop('disabled', true);
+                $('[data-target="#paymentModal"]').prop('disabled', true);
+                $('[data-target="#dispatchModal"]').prop('disabled', true);
+                $('[data-target="#contactModal"]').prop('disabled', true);
+                $('[data-target="#orderNoteModal"]').prop('disabled', true);
                 $('#resendAddressFormBtn').prop('disabled', true); // Add this line
                 // Freeze pricing section buttons
                 $('#apply-discount-btn').prop('disabled', true);
