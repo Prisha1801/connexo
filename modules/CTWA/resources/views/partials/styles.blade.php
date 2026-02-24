@@ -191,5 +191,75 @@
 .ctwa-btn-whatsapp:hover { background: var(--ctwa-primary-dark); color: #fff; }
 .form-step { display: none; }
 .form-step.active { display: block; }
+
+/* Panel & overview specific styling */
+.ctwa-stat-card {
+  position: relative;
+}
+.ctwa-stat-card .stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: var(--ctwa-primary-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ctwa-primary);
+  margin-right: 0.85rem;
+}
+.ctwa-stat-card .stat-meta {
+  font-size: 0.75rem;
+  color: var(--ctwa-slate-muted);
+}
+
+.ctwa-panel-card {
+  border-radius: var(--ctwa-radius);
+  border: 1px solid var(--ctwa-border);
+  box-shadow: var(--ctwa-shadow);
+  background: #ffffff;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.ctwa-panel-card .card-body {
+  padding: 1.5rem 1.6rem;
+}
+.ctwa-panel-card .panel-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: var(--ctwa-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ctwa-primary);
+  font-size: 1.35rem;
+}
+.ctwa-panel-card .panel-label {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: var(--ctwa-slate-muted);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.ctwa-panel-card .panel-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ctwa-slate);
+}
+.ctwa-panel-card .panel-desc {
+  font-size: 0.86rem;
+  color: var(--ctwa-slate-muted);
+  margin-top: 0.2rem;
+}
+.ctwa-panel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ctwa-shadow-lg);
+  border-color: rgba(15,23,42,0.16);
+}
+.ctwa-panel-card:hover .panel-icon {
+  background: var(--ctwa-primary);
+  color: #ffffff;
+}
 </style>
 

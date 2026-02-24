@@ -81,14 +81,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-2">
-                    <div class="ctwa-stat-card">
-                        <div>
-                            <div class="stat-label">{{ __('Leads') }}</div>
-                            <div class="stat-value">{{ number_format($totals['leads']) }}</div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div class="table-responsive mt-3">
@@ -100,7 +92,6 @@
                             <th>Status</th>
                             <th>Ad Account</th>
                             <th>Date</th>
-                            <th style="width: 80px;">Leads</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -121,11 +112,6 @@
                                 </td>
                                 <td><small class="text-muted">{{ $ad->ad_account }}</small></td>
                                 <td>{{ \Carbon\Carbon::parse($ad->ad_created_at)->format('M d, Y') }}</td>
-                                <td>
-                                    <a href="{{ route('ctwa.leads', ['source_id' => $ad->ad_id]) }}" class="btn btn-sm ctwa-btn-soft" title="View leads">
-                                        <i class="ni ni-single-02"></i>
-                                    </a>
-                                </td>
                             </tr>
                         @endforeach
                     </tbody>

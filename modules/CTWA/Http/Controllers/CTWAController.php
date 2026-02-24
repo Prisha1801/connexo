@@ -54,80 +54,47 @@ class CTWAController extends Controller
         $companyUserIds = $this->companyUserIds();
         $query = FacebookAd::whereIn('user_id', $companyUserIds);
 
+        $allowedAdAccountIds = [];
+        $selectedAccountId = null;
+
+        // Restrict to ad accounts the current user's token can access (avoid showing "all" accounts)
+        if ($token) {
+            $accountsResponse = Http::timeout(15)->get("https://graph.facebook.com/v22.0/me/adaccounts", [
+                'fields' => 'id,name,account_status',
+                'access_token' => $token,
+            ]);
+            $accountsList = $accountsResponse->json('data') ?? [];
+            $allowedAdAccountIds = collect($accountsList)->pluck('id')->filter()->values()->toArray();
+            if (!empty($allowedAdAccountIds)) {
+                $companyId = $this->companyId();
+                $selectedAccountId = $companyId ? Config::where('key', 'ctwa_selected_ad_account_id')
+                    ->where('model_type', Company::class)
+                    ->where('model_id', $companyId)
+                    ->value('value') : null;
+                if ($selectedAccountId && in_array($selectedAccountId, $allowedAdAccountIds, true)) {
+                    $query->where('ad_account_id', $selectedAccountId);
+                } else {
+                    $query->whereIn('ad_account_id', $allowedAdAccountIds);
+                }
+            }
+        }
+
         if (request()->has('search') && !empty(request('search'))) {
             $query->where('ad_name', 'like', '%' . request('search') . '%');
         }
 
         $ads = $query->latest('ad_created_at')->paginate(10)->withQueryString();
 
+        // Keep totals lightweight on index to avoid slow loads / timeouts.
+        // Detailed insights can be fetched on-demand from other endpoints.
         $finalTotals = [
             'impressions' => 0,
-            'reach' => 0,
-            'spend' => 0,
-            'chats' => 0,
-            'leads' => 0,
-            'clicks' => 0,
+            'reach'      => 0,
+            'spend'      => 0,
+            'chats'      => 0,
+            'leads'      => 0,
+            'clicks'     => 0,
         ];
-
-        if ($token) {
-            try {
-                $accountIds = FacebookAd::whereIn('user_id', $companyUserIds)
-                    ->whereNotNull('ad_account_id')
-                    ->pluck('ad_account_id')
-                    ->unique()
-                    ->filter()
-                    ->values()
-                    ->toArray();
-
-                if (!empty($accountIds)) {
-                    foreach ($accountIds as $accountId) {
-                        $response = Http::timeout(60)->retry(2, 1000)->get("https://graph.facebook.com/v22.0/{$accountId}/insights", [
-                            'fields' => 'impressions,reach,spend,actions,clicks',
-                            'date_preset' => 'last_30d',
-                            'access_token' => $token,
-                        ]);
-                        if (!$response->successful()) {
-                            Log::warning('CTWA insights skipped for ad account (permission or error)', [
-                                'account_id' => $accountId,
-                                'status' => $response->status(),
-                                'message' => $response->json('error.message'),
-                            ]);
-                            continue;
-                        }
-                        $data = $response->json('data.0') ?? [];
-                        $finalTotals['impressions'] += (int) ($data['impressions'] ?? 0);
-                        $finalTotals['reach'] += (int) ($data['reach'] ?? 0);
-                        $finalTotals['spend'] += (float) ($data['spend'] ?? 0);
-                        $finalTotals['clicks'] += (int) ($data['clicks'] ?? 0);
-                        $actions = collect($data['actions'] ?? []);
-                        $finalTotals['chats'] += (int) (($actions->firstWhere('action_type', 'onsite_conversion.messaging_whatsapp_conversation') ?? [])['value'] ?? 0);
-                        $finalTotals['leads'] += (int) (($actions->firstWhere('action_type', 'lead') ?? [])['value'] ?? 0);
-                    }
-                } else {
-                    $adIds = FacebookAd::whereIn('user_id', $companyUserIds)->pluck('ad_id')->take(50)->toArray();
-                    foreach ($adIds as $adId) {
-                        $res = Http::get("https://graph.facebook.com/v22.0/{$adId}/insights", [
-                            'access_token' => $token,
-                            'fields' => 'impressions,reach,spend,clicks,actions',
-                            'date_preset' => 'last_30d',
-                        ]);
-                        if (!$res->successful()) {
-                            continue;
-                        }
-                        $row = $res->json('data.0') ?? [];
-                        $finalTotals['impressions'] += (int) ($row['impressions'] ?? 0);
-                        $finalTotals['reach'] += (int) ($row['reach'] ?? 0);
-                        $finalTotals['spend'] += (float) ($row['spend'] ?? 0);
-                        $finalTotals['clicks'] += (int) ($row['clicks'] ?? 0);
-                        $actions = collect($row['actions'] ?? []);
-                        $finalTotals['chats'] += (int) (($actions->firstWhere('action_type', 'onsite_conversion.messaging_whatsapp_conversation') ?? [])['value'] ?? 0);
-                        $finalTotals['leads'] += (int) (($actions->firstWhere('action_type', 'lead') ?? [])['value'] ?? 0);
-                    }
-                }
-            } catch (\Throwable $e) {
-                Log::warning('CTWA index insights fetch failed', ['message' => $e->getMessage()]);
-            }
-        }
 
         return view('ctwa::ctwa', compact('ads', 'finalTotals'));
     }
@@ -159,21 +126,8 @@ class CTWAController extends Controller
                 ->count();
         }
 
-        $token = $user->fb_long_lived_token;
+        // Keep panel fast: avoid looping over many ads with external API calls here.
         $insights = ['impressions' => 0, 'reach' => 0, 'spend' => 0];
-        if ($token && $adIds->isNotEmpty()) {
-            foreach ($adIds->take(50) as $adId) {
-                $res = Http::get("https://graph.facebook.com/v22.0/{$adId}/insights", [
-                    'access_token' => $token,
-                    'fields' => 'impressions,reach,spend',
-                    'date_preset' => 'last_30d',
-                ]);
-                $row = $res->json('data.0') ?? [];
-                $insights['impressions'] += (int) ($row['impressions'] ?? 0);
-                $insights['reach'] += (int) ($row['reach'] ?? 0);
-                $insights['spend'] += (float) ($row['spend'] ?? 0);
-            }
-        }
 
         return view('ctwa::panel', compact('adsCount', 'leadsCount', 'insights'));
     }
