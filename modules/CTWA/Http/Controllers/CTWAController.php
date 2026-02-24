@@ -319,7 +319,7 @@ class CTWAController extends Controller
             return redirect()->route('login')->withErrors('Please log in first.');
         }
 
-        return view('ctwa::createads');
+        return view('ctwa::createads', ['token' => $user->fb_long_lived_token ?? '']);
     }
 
     public function searchMetaInterests(Request $request)
