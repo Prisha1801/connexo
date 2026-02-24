@@ -1,0 +1,8 @@
+phone,name,lastname,Email,Company
+919927270503,Sachin,Rawat,sachin.rawat@gmail.com,GoLocall
+917011767613,Brij,Negi,negi2410@gmail.com,Dotflo
+,,,,
+,,,,
+,,,,
+,,,,
+"Note: The mandatory fields for user creation are name, lastname, and phone. The additional columns (custom_field_name_1, custom_field_name_2) are for extra contact fields. Remember, if you have defined any field, enter it exactly as its name is written. Don't forget to remove this message."

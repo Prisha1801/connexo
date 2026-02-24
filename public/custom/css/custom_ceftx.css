@@ -1,0 +1,65 @@
+.sc-hLBbgP {
+    background-color: #003a4c !important;
+    border: 4px solid #3ba637 !important;
+    border-radius: 8px !important;
+}
+
+.sc-hLBbgP .title {
+    background-color: #003a4c !important;
+    border-bottom: 4px solid #3ba637 !important;
+    border-top-left-radius: 8px !important;
+    border-top-right-radius: 8px !important;
+    font-size: 14px !important;
+    font-weight: bold !important;
+}
+
+.sc-hLBbgP:hover {
+    background-color: #044f66 !important;
+    border: 4px solid #3ba637 !important;
+}
+
+.sc-gKPRtg {
+    background-color: #003a4c !important;
+    border-bottom: 4px solid #3ba637 !important;
+}
+
+.sc-gKPRtg .sc-pyfCe {
+    background-color: #003a4c !important;
+    border: 2px solid #3ba637 !important;
+}
+
+.sc-dkrFOg {
+    border-radius: 6px !important;
+    border: 0px solid #3ba637 !important;
+}
+
+.sc-gswNZR {
+    stroke: #4ab846 !important;
+    stroke-width: 4px !important;
+}
+
+.alert-name {
+    width: fit-content;
+
+    max-width: 100%;
+}
+
+.alert-name .d-flex {
+    flex-wrap: wrap;
+}
+
+
+.selection {
+    background-color: #f9f9f9 !important;
+    border: 0 !important;
+}
+
+
+
+.ct-sidebar .nav > .active > a {
+    color: #08e500 !important;
+    &:before {
+        background-color: #08e500 !important;
+
+    }
+}

@@ -1,0 +1,71 @@
+{
+    "version": "2.1",
+    "screens": [
+        {
+            "id": "flowtestingviabot",
+            "title": "Lead generation form",
+            "terminal": true,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "user_data",
+                        "children": [
+                            {
+                                "type": "TextSubheading",
+                                "text": "Header"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Text Field",
+                                "name": "text-1732616652001-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Text Field",
+                                "name": "text-1732616653001-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Text Field",
+                                "name": "text-1732616654624-0"
+                            },
+                            {
+                                "type": "CheckboxGroup",
+                                "label": "Checkbox Group",
+                                "required": false,
+                                "name": "checkbox-group-1732616655704-0",
+                                "data-source": [
+                                    {
+                                        "id": "option-1",
+                                        "title": "Option 1"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Submit Button",
+                                "on-click-action": {
+                                    "name": "complete",
+                                    "payload": {
+                                        "text-1732616652001-0": "${form.text-1732616652001-0}",
+                                        "text-1732616653001-0": "${form.text-1732616653001-0}",
+                                        "text-1732616654624-0": "${form.text-1732616654624-0}",
+                                        "checkbox-group-1732616655704-0": "${form.checkbox-group-1732616655704-0}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

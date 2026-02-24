@@ -1,0 +1,86 @@
+{
+    "version": "2.1",
+    "screens": [
+        {
+            "id": "flowtestingviabot",
+            "title": "Lead generation form",
+            "terminal": true,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "user_data",
+                        "children": [
+                            {
+                                "type": "TextSubheading",
+                                "text": "Header"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Name",
+                                "name": "text-1732606927080-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "email",
+                                "required": false,
+                                "label": "Email",
+                                "name": "text-1732606936672-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "phone",
+                                "required": false,
+                                "label": "Mobile",
+                                "name": "text-1732606937781-0"
+                            },
+                            {
+                                "type": "Dropdown",
+                                "label": "Select",
+                                "required": false,
+                                "name": "select-1732606966885-0",
+                                "data-source": [
+                                    {
+                                        "id": "option-1",
+                                        "title": "Option 1"
+                                    },
+                                    {
+                                        "id": "option-2",
+                                        "title": "Option 2"
+                                    },
+                                    {
+                                        "id": "option-3",
+                                        "title": "Option 3"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "DatePicker",
+                                "required": false,
+                                "label": "Date Field",
+                                "name": "date-1732606970092-0"
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Submit Button",
+                                "on-click-action": {
+                                    "name": "complete",
+                                    "payload": {
+                                        "text-1732606927080-0": "${form.text-1732606927080-0}",
+                                        "text-1732606936672-0": "${form.text-1732606936672-0}",
+                                        "text-1732606937781-0": "${form.text-1732606937781-0}",
+                                        "select-1732606966885-0": "${form.select-1732606966885-0}",
+                                        "date-1732606970092-0": "${form.date-1732606970092-0}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

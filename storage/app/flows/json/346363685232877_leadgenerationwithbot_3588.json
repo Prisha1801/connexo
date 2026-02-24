@@ -1,0 +1,119 @@
+{
+    "version": "2.1",
+    "screens": [
+        {
+            "id": "flowtestingviabot",
+            "title": "Lead generation form",
+            "terminal": true,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "user_data",
+                        "children": [
+                            {
+                                "type": "TextSubheading",
+                                "text": "Header"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Name",
+                                "name": "text-1732604929584-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "email",
+                                "required": false,
+                                "label": "Email",
+                                "name": "text-1732604938119-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "phone",
+                                "required": false,
+                                "label": "Phone",
+                                "name": "text-1732604945749-0"
+                            },
+                            {
+                                "type": "TextArea",
+                                "required": false,
+                                "label": "Address",
+                                "name": "textarea-1732604981244"
+                            },
+                            {
+                                "type": "CheckboxGroup",
+                                "label": "Checkbox Group",
+                                "required": false,
+                                "name": "checkbox-group-1732604931414-0",
+                                "data-source": [
+                                    {
+                                        "id": "option-1",
+                                        "title": "Option 1"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "CheckboxGroup",
+                                "label": "Checkbox Group",
+                                "required": false,
+                                "name": "checkbox-group-1732604934887-0",
+                                "data-source": [
+                                    {
+                                        "id": "option-1",
+                                        "title": "Option 1"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "RadioButtonsGroup",
+                                "label": "Radio Group",
+                                "required": false,
+                                "name": "radio-group-1732604936657-0",
+                                "data-source": [
+                                    {
+                                        "id": "option-1",
+                                        "title": "Option 1"
+                                    },
+                                    {
+                                        "id": "option-2",
+                                        "title": "Option 2"
+                                    },
+                                    {
+                                        "id": "option-3",
+                                        "title": "Option 3"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "DatePicker",
+                                "required": false,
+                                "label": "Date Field",
+                                "name": "date-1732604991074-0"
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Submit Button",
+                                "on-click-action": {
+                                    "name": "complete",
+                                    "payload": {
+                                        "text-1732604929584-0": "${form.text-1732604929584-0}",
+                                        "text-1732604938119-0": "${form.text-1732604938119-0}",
+                                        "text-1732604945749-0": "${form.text-1732604945749-0}",
+                                        "textarea-1732604981244": "${form.textarea-1732604981244}",
+                                        "checkbox-group-1732604931414-0": "${form.checkbox-group-1732604931414-0}",
+                                        "checkbox-group-1732604934887-0": "${form.checkbox-group-1732604934887-0}",
+                                        "radio-group-1732604936657-0": "${form.radio-group-1732604936657-0}",
+                                        "date-1732604991074-0": "${form.date-1732604991074-0}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

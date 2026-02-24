@@ -1,0 +1,128 @@
+{
+    "version": "2.1",
+    "screens": [
+        {
+            "id": "leadgenerationformviaweb",
+            "title": "Lead Genration Form via Web",
+            "terminal": true,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "user_data",
+                        "children": [
+                            {
+                                "type": "TextSubheading",
+                                "text": "Lead Form"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Name",
+                                "name": "text-1732634294894-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "phone",
+                                "required": false,
+                                "label": "Mobile Number",
+                                "name": "text-1732634340864-0"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "email",
+                                "required": false,
+                                "label": "Email",
+                                "name": "text-1732634387941-0"
+                            },
+                            {
+                                "type": "Dropdown",
+                                "label": "Property Type",
+                                "required": false,
+                                "name": "select-1732634399577-0",
+                                "data-source": [
+                                    {
+                                        "id": "option-1",
+                                        "title": "Flat"
+                                    },
+                                    {
+                                        "id": "option-2",
+                                        "title": "Villa"
+                                    },
+                                    {
+                                        "id": "option-3",
+                                        "title": "Apartment"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "RadioButtonsGroup",
+                                "label": "Gender",
+                                "required": false,
+                                "name": "radio-group-1732634423884-0",
+                                "data-source": [
+                                    {
+                                        "id": "male",
+                                        "title": "Male"
+                                    },
+                                    {
+                                        "id": "female",
+                                        "title": "Female"
+                                    },
+                                    {
+                                        "id": "other",
+                                        "title": "Other"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "CheckboxGroup",
+                                "label": "Property Features",
+                                "required": false,
+                                "name": "checkbox-group-1732634449316-0",
+                                "data-source": [
+                                    {
+                                        "id": "option-1",
+                                        "title": "Parking"
+                                    },
+                                    {
+                                        "id": "park",
+                                        "title": "Park"
+                                    },
+                                    {
+                                        "id": "school",
+                                        "title": "School"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "DatePicker",
+                                "required": false,
+                                "label": "Visit Date",
+                                "name": "date-1732634487914-0"
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Submit Button",
+                                "on-click-action": {
+                                    "name": "complete",
+                                    "payload": {
+                                        "text-1732634294894-0": "${form.text-1732634294894-0}",
+                                        "text-1732634340864-0": "${form.text-1732634340864-0}",
+                                        "text-1732634387941-0": "${form.text-1732634387941-0}",
+                                        "select-1732634399577-0": "${form.select-1732634399577-0}",
+                                        "radio-group-1732634423884-0": "${form.radio-group-1732634423884-0}",
+                                        "checkbox-group-1732634449316-0": "${form.checkbox-group-1732634449316-0}",
+                                        "date-1732634487914-0": "${form.date-1732634487914-0}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

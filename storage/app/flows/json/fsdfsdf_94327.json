@@ -1,0 +1,49 @@
+{
+    "version": "2.1",
+    "screens": [
+        {
+            "id": "fsdfsdf",
+            "title": "tseting",
+            "terminal": true,
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "user_data",
+                        "children": [
+                            {
+                                "type": "TextSubheading",
+                                "text": "Header"
+                            },
+                            {
+                                "type": "TextInput",
+                                "input-type": "text",
+                                "required": false,
+                                "label": "Text Field",
+                                "name": "text-1732635311306-0"
+                            },
+                            {
+                                "type": "TextArea",
+                                "required": false,
+                                "label": "Text Area",
+                                "name": "textarea-1732635311906-0"
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Submit Button",
+                                "on-click-action": {
+                                    "name": "complete",
+                                    "payload": {
+                                        "text-1732635311306-0": "${form.text-1732635311306-0}",
+                                        "textarea-1732635311906-0": "${form.textarea-1732635311906-0}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

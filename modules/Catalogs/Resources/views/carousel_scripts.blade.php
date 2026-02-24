@@ -1,0 +1,265 @@
+<script>
+    "use strict";
+    var templateManager=null;
+
+    window.onload = function () {
+        Vue.config.devtools=true;
+        
+        templateManager = new Vue({
+        el: '#template_creator',
+            data: {
+                "template_name": "",
+                "category": "MARKETING",
+                "language": "en_US",
+                "headerType": "none",
+                "headerImage": "",
+                "headerVideo": "",
+                "headerPdf": "",
+                "headerText": "",
+                "headerExampleVariable": "",
+                "bodyText": "",
+                "bodyExampleVariable": [],
+                "footerText": "",
+                "quickReplies": [],
+                "vistiWebsite": [],
+                "hasPhone": false,
+                "dialCode": "",
+                "phoneNumber": "",
+                "callPhoneButtonText": "",
+                "copyOfferCode":false,
+                "offerCode":"",
+                "isSending":false,
+                "product" : [],
+            },
+            watch: {
+                template_name: function (newVal, oldVal) {
+                    //Don't allow spaces in the template name
+                    this.template_name = newVal.replace(/\s/g, '_');    
+                    
+                    //Replace - with _
+                    this.template_name = this.template_name.replace(/-/g, '_');
+
+                    //Replace Capital letters with lowercase
+                    this.template_name = this.template_name.toLowerCase();
+                }
+            },
+            methods: {
+                addHeaderVariable: function () {
+                    if(!this.headervariableAdded){
+                        this.headerText += ' \{\{1\}\}';
+                    } 
+                },
+                addBold: function () {
+                    this.bodyText += '*ENTER_CONTENT_HERE*';
+                },
+                adddItalic: function () {
+                    this.bodyText += '_ENTER_CONTENT_HERE_';
+                },
+                addCode: function () {
+                    this.bodyText += '```ENTER_CODE_HERE```';
+                },
+                addVariable: function () {
+                    // Add a variable to the body text
+                    // First, get the next variable number
+                    let nextVariable = this.bodyText.match(/\{\{[0-9]+\}\}/g);
+                    if(nextVariable){
+                        nextVariable = parseInt(nextVariable.pop().replace(/\{|\}/g, '')) + 1;
+                    } else {
+                        nextVariable = 1;
+                    }
+                    
+                    this.bodyText += '\{\{'+nextVariable+'\}\}';
+                },
+                addQuickReply: function () {
+                   this.quickReplies.push("");
+                },
+                deleteQuickReply: function (index) {
+                    this.quickReplies.splice(index, 1);
+                },
+                addVisitWebsite: function () {
+                    if(this.vistiWebsite.length >= 2){
+                        return;
+                    }
+                    this.vistiWebsite.push({title: "", url: ""});
+                },
+                deleteVisitWebsite: function (index) {
+                    this.vistiWebsite.splice(index, 1);
+                },
+                addCallPhone: function () {
+                    this.hasPhone = true;
+                },
+                deletePhone: function () {
+                    this.hasPhone = false;
+                },
+                addCopyOfferCode: function () {
+                    this.copyOfferCode = true;
+                },
+                deleteCopyOfferCode: function () {
+                    this.copyOfferCode = false;
+                },
+                showDisabledInDemo: function () {
+                    console.log('This feature is disabled in the demo');
+                    alert('This feature is disabled in the demo');
+                },
+                submitTemplate: function () {
+                    if (!this.isSending) {
+            this.isSending = true;
+
+            var metaTemplate = {
+                "name": this.template_name,
+                "category": this.category,
+                "language": this.language,
+                "allow_category_change": true,
+                "product_id": this.product,
+            };
+
+            var components = [];
+
+            // Add the body component
+            var bodyComponent = {
+                "type": "BODY",
+                "text": this.bodyText
+            };
+            components.push(bodyComponent);
+
+            if (this.bodyVariables) {
+                bodyComponent.example = {
+                    "body_text": [this.bodyExampleVariable]
+                };
+            }
+
+            // Header component creation logic (if needed)
+            if (this.headerType === 'text') {
+                var headerComponent = {
+                    "type": "HEADER",
+                    "format": "TEXT",
+                    "text": this.headerText
+                };
+                if (this.headerExampleVariable) {
+                    headerComponent.example = {
+                        "header_text": [this.headerExampleVariable]
+                    };
+                }
+                components.push(headerComponent);
+            }
+
+            // Footer Text
+            if (this.footerText.length > 0) {
+                var footerComponent = {
+                    "type": "FOOTER",
+                    "text": this.footerText
+                };
+                components.push(footerComponent);
+            }
+
+            // Carousel component creation
+            if (this.product.length > 0) {
+                var carouselComponent = {
+                    "type": "carousel",
+                    "cards": this.product.map(prod => ({
+                        "components": [
+                            {
+                                "type": "header",
+                                "format": "product",
+                                "text": prod.name // Assume prod has a name property
+                            },
+                            {
+                                "type": "buttons",
+                                "buttons": [
+                                    {
+                                        "type": "spm",
+                                        "text": "View",
+                                        "url": prod.url // Assume prod has a url property
+                                    }
+                                ]
+                            }
+                        ]
+                    }))
+                };
+                components.push(carouselComponent);
+            }
+
+            // Add buttons to the components (quick replies, visit website, etc.)
+            var buttonsComponent = {
+                "type": "BUTTONS",
+                "buttons": []
+            };
+
+            
+
+            // Visit Website
+            if (this.vistiWebsite.length > 0) {
+                this.vistiWebsite.forEach(function (website) {
+                    buttonsComponent.buttons.push({
+                        "type": "URL",
+                        "text": website.title,
+                        "url": website.url
+                    });
+                });
+            }
+
+            // Call Phone
+            if (this.hasPhone) {
+                buttonsComponent.buttons.push({
+                    "type": "PHONE_NUMBER",
+                    "text": this.callPhoneButtonText,
+                    "phone_number": this.dialCode + this.phoneNumber
+                });
+            }
+
+            // Copy Offer Code
+            if (this.copyOfferCode) {
+                buttonsComponent.buttons.push({
+                    "type": "COPY_CODE",
+                    "example": this.offerCode
+                });
+            }
+
+            // Add buttons to the components
+            if (buttonsComponent.buttons.length > 0) {
+                components.push(buttonsComponent);
+            }
+
+            // Add the components to the metaTemplate
+            metaTemplate.components = components;
+            console.log('metaTemplate', metaTemplate);
+            // Send the metaTemplate to the server
+            axios.post("{{ route('catalog.submitCatalogTemplate') }}", metaTemplate)
+                .then(function (response) {
+                    // Handle success callback
+                    window.location.href = "{{ route('catalog.catalogsTemplatesIndex', ['ok' => 1, 'refresh' => 'yes']) }}";
+                })
+                .catch(function (error) {
+                    console.log(error);
+                    alert('An error occurred while submitting the template. Check the console.')
+                });
+        }
+                }
+            },
+            computed: {
+                headervariableAdded: function () {
+                    return this.headerText.indexOf('\{\{1\}\}') > -1 && this.headerType == 'text';
+                },
+                bodyVariables: function () {
+                    return this.bodyText.match(/\{\{[0-9]+\}\}/g);
+                },
+                bodyReplacedWithExample: function () {
+                    let bodyText = this.bodyText;
+                    if(this.bodyExampleVariable){
+                        this.bodyExampleVariable.forEach(function (example, index) {
+                            bodyText = bodyText.replace('\{\{'+(index+1)+'\}\}', example);
+                        });
+                    }
+                    return bodyText;
+                },
+                headerReplacedWithExample: function () {
+                    let headerText = this.headerText;
+                    if(this.headerExampleVariable){
+                        headerText = headerText.replace('\{\{1\}\}', this.headerExampleVariable);
+                    }
+                    return headerText;
+                }
+            }
+        });
+    };
+</script>
