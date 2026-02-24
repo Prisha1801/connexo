@@ -18,8 +18,9 @@ class FacebookAd extends Model
         'ad_id',
         'ad_name',
         'status',
-        'ad_created_at', 
+        'ad_created_at',
         'ad_account',
+        'ad_account_id',
         'creative',
     ];
 

@@ -19,10 +19,29 @@ use Modules\CTWA\Models\CtwaCampaign;
 use Modules\CTWA\Models\CtwaMessage;
 use Modules\CTWA\Models\CTWAAdsClickLead;
 use App\Models\Config;
+use App\Models\Company;
 use Illuminate\Support\Facades\Auth;
+use Modules\Contacts\Models\Contact;
 
 class CTWAController extends Controller
 {
+    /** Current company ID (session or logged-in user's company). */
+    private function companyId()
+    {
+        $user = auth()->user();
+        return $user ? (session('company_id') ?? $user->company_id) : null;
+    }
+
+    /** User IDs belonging to the current company (for scoping ads/data to company only). */
+    private function companyUserIds()
+    {
+        $cid = $this->companyId();
+        if (!$cid) {
+            return collect();
+        }
+        return User::where('company_id', $cid)->pluck('id');
+    }
+
     public function index()
     {
         $user = auth()->user();
@@ -31,7 +50,9 @@ class CTWAController extends Controller
             return redirect()->route('login')->withErrors('Please log in first.');
         }
 
-        $query = FacebookAd::where('user_id', $user->id);
+        $token = $user->fb_long_lived_token;
+        $companyUserIds = $this->companyUserIds();
+        $query = FacebookAd::whereIn('user_id', $companyUserIds);
 
         if (request()->has('search') && !empty(request('search'))) {
             $query->where('ad_name', 'like', '%' . request('search') . '%');
@@ -39,15 +60,122 @@ class CTWAController extends Controller
 
         $ads = $query->latest('ad_created_at')->paginate(10)->withQueryString();
 
-        return view('ctwa::ctwa', compact('ads'));
+        $finalTotals = [
+            'impressions' => 0,
+            'reach' => 0,
+            'spend' => 0,
+            'chats' => 0,
+            'leads' => 0,
+            'clicks' => 0,
+        ];
+
+        if ($token) {
+            try {
+                $accountIds = FacebookAd::whereIn('user_id', $companyUserIds)
+                    ->whereNotNull('ad_account_id')
+                    ->pluck('ad_account_id')
+                    ->unique()
+                    ->filter()
+                    ->values()
+                    ->toArray();
+
+                if (!empty($accountIds)) {
+                    foreach ($accountIds as $accountId) {
+                        $response = Http::timeout(60)->retry(2, 1000)->get("https://graph.facebook.com/v22.0/{$accountId}/insights", [
+                            'fields' => 'impressions,reach,spend,actions,clicks',
+                            'date_preset' => 'last_30d',
+                            'access_token' => $token,
+                        ]);
+                        if (!$response->successful()) {
+                            Log::warning('CTWA insights skipped for ad account (permission or error)', [
+                                'account_id' => $accountId,
+                                'status' => $response->status(),
+                                'message' => $response->json('error.message'),
+                            ]);
+                            continue;
+                        }
+                        $data = $response->json('data.0') ?? [];
+                        $finalTotals['impressions'] += (int) ($data['impressions'] ?? 0);
+                        $finalTotals['reach'] += (int) ($data['reach'] ?? 0);
+                        $finalTotals['spend'] += (float) ($data['spend'] ?? 0);
+                        $finalTotals['clicks'] += (int) ($data['clicks'] ?? 0);
+                        $actions = collect($data['actions'] ?? []);
+                        $finalTotals['chats'] += (int) (($actions->firstWhere('action_type', 'onsite_conversion.messaging_whatsapp_conversation') ?? [])['value'] ?? 0);
+                        $finalTotals['leads'] += (int) (($actions->firstWhere('action_type', 'lead') ?? [])['value'] ?? 0);
+                    }
+                } else {
+                    $adIds = FacebookAd::whereIn('user_id', $companyUserIds)->pluck('ad_id')->take(50)->toArray();
+                    foreach ($adIds as $adId) {
+                        $res = Http::get("https://graph.facebook.com/v22.0/{$adId}/insights", [
+                            'access_token' => $token,
+                            'fields' => 'impressions,reach,spend,clicks,actions',
+                            'date_preset' => 'last_30d',
+                        ]);
+                        if (!$res->successful()) {
+                            continue;
+                        }
+                        $row = $res->json('data.0') ?? [];
+                        $finalTotals['impressions'] += (int) ($row['impressions'] ?? 0);
+                        $finalTotals['reach'] += (int) ($row['reach'] ?? 0);
+                        $finalTotals['spend'] += (float) ($row['spend'] ?? 0);
+                        $finalTotals['clicks'] += (int) ($row['clicks'] ?? 0);
+                        $actions = collect($row['actions'] ?? []);
+                        $finalTotals['chats'] += (int) (($actions->firstWhere('action_type', 'onsite_conversion.messaging_whatsapp_conversation') ?? [])['value'] ?? 0);
+                        $finalTotals['leads'] += (int) (($actions->firstWhere('action_type', 'lead') ?? [])['value'] ?? 0);
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('CTWA index insights fetch failed', ['message' => $e->getMessage()]);
+            }
+        }
+
+        return view('ctwa::ctwa', compact('ads', 'finalTotals'));
     }
 
     public function panel()
     {
-        if (!auth()->user()) {
+        $user = auth()->user();
+        if (!$user) {
             return redirect()->route('login')->withErrors('Please log in first.');
         }
-        return view('ctwa::panel');
+
+        $companyUserIds = $this->companyUserIds();
+        $adIds = collect();
+        $adIds = $adIds->merge(FacebookAd::whereIn('user_id', $companyUserIds)->pluck('ad_id'));
+        $adIds = $adIds->merge(CtwaAd::whereIn('user_id', $companyUserIds)->pluck('ad_id'));
+        $adIds = $adIds->unique()->values();
+
+        $adsCount = FacebookAd::whereIn('user_id', $companyUserIds)->count();
+        $ctwaOnlyCount = CtwaAd::whereIn('user_id', $companyUserIds)
+            ->whereNotIn('ad_id', FacebookAd::whereIn('user_id', $companyUserIds)->pluck('ad_id'))
+            ->count();
+        $adsCount = $adsCount + $ctwaOnlyCount;
+
+        $companyId = $this->companyId();
+        $leadsCount = 0;
+        if ($adIds->isNotEmpty()) {
+            $leadsCount = CTWAAdsClickLead::where('company_id', $companyId)
+                ->whereIn('source_id', $adIds)
+                ->count();
+        }
+
+        $token = $user->fb_long_lived_token;
+        $insights = ['impressions' => 0, 'reach' => 0, 'spend' => 0];
+        if ($token && $adIds->isNotEmpty()) {
+            foreach ($adIds->take(50) as $adId) {
+                $res = Http::get("https://graph.facebook.com/v22.0/{$adId}/insights", [
+                    'access_token' => $token,
+                    'fields' => 'impressions,reach,spend',
+                    'date_preset' => 'last_30d',
+                ]);
+                $row = $res->json('data.0') ?? [];
+                $insights['impressions'] += (int) ($row['impressions'] ?? 0);
+                $insights['reach'] += (int) ($row['reach'] ?? 0);
+                $insights['spend'] += (float) ($row['spend'] ?? 0);
+            }
+        }
+
+        return view('ctwa::panel', compact('adsCount', 'leadsCount', 'insights'));
     }
 
     public function leadsIndex()
@@ -57,12 +185,18 @@ class CTWAController extends Controller
             return redirect()->route('login')->withErrors('Please log in first.');
         }
 
-        $companyId = session('company_id') ?? $user->company_id;
-        $adIds = FacebookAd::where('user_id', $user->id)->pluck('ad_id')->toArray();
+        $companyId = $this->companyId();
+        $companyUserIds = $this->companyUserIds();
+        $adIds = collect(FacebookAd::whereIn('user_id', $companyUserIds)->pluck('ad_id'))
+            ->merge(CtwaAd::whereIn('user_id', $companyUserIds)->pluck('ad_id'))
+            ->unique()
+            ->values()
+            ->toArray();
 
         $query = CTWAAdsClickLead::query()
-            ->select('ctwa_ads_click_leads.*', 'facebook_ads.ad_name')
-            ->leftJoin('facebook_ads', 'ctwa_ads_click_leads.source_id', '=', 'facebook_ads.ad_id')
+            ->select('ctwa_ads_click_leads.*', \DB::raw('COALESCE(fb.ad_name, ctwa.ad_name) as ad_name'))
+            ->leftJoin('facebook_ads as fb', 'ctwa_ads_click_leads.source_id', '=', 'fb.ad_id')
+            ->leftJoin('ctwa_ads as ctwa', 'ctwa_ads_click_leads.source_id', '=', 'ctwa.ad_id')
             ->where('ctwa_ads_click_leads.company_id', $companyId);
 
         if (!empty($adIds)) {
@@ -79,12 +213,17 @@ class CTWAController extends Controller
             $query->where(function ($q) use ($s) {
                 $q->where('ctwa_ads_click_leads.source_id', 'like', "%{$s}%")
                     ->orWhere('ctwa_ads_click_leads.wa_id', 'like', "%{$s}%")
-                    ->orWhere('facebook_ads.ad_name', 'like', "%{$s}%");
+                    ->orWhere('fb.ad_name', 'like', "%{$s}%")
+                    ->orWhere('ctwa.ad_name', 'like', "%{$s}%");
             });
         }
 
         $leads = $query->with('contact')->latest('ctwa_ads_click_leads.created_at')->paginate(20)->withQueryString();
-        $adsForFilter = FacebookAd::where('user_id', $user->id)->orderBy('ad_name')->get();
+        $companyUserIds = $this->companyUserIds();
+        $fbAds = FacebookAd::whereIn('user_id', $companyUserIds)->orderBy('ad_name')->get(['ad_id', 'ad_name']);
+        $fbAdIds = $fbAds->pluck('ad_id');
+        $ctwaAds = CtwaAd::whereIn('user_id', $companyUserIds)->whereNotIn('ad_id', $fbAdIds)->orderBy('ad_name')->get(['ad_id', 'ad_name']);
+        $adsForFilter = $fbAds->merge($ctwaAds)->sortBy('ad_name')->values();
 
         return view('ctwa::leads', compact('leads', 'adsForFilter'));
     }
@@ -93,18 +232,19 @@ class CTWAController extends Controller
     {
         $user = auth()->user();
 
-        $ad = FacebookAd::where('ad_id', $adId)->where('user_id', $user->id)->firstOrFail();
-        $CTWAAdsClickLead = CTWAAdsClickLead::where('source_id', $adId)->get();
+        $ad = FacebookAd::where('ad_id', $adId)->whereIn('user_id', $this->companyUserIds())->firstOrFail();
+        $companyId = $this->companyId();
+        $CTWAAdsClickLead = CTWAAdsClickLead::where('company_id', $companyId)->where('source_id', $adId)->get();
 
         $token = $user->fb_long_lived_token;
 
-        $insights = Http::get("https://graph.facebook.com/v19.0/{$ad->ad_id}/insights", [
+        $insights = Http::get("https://graph.facebook.com/v22.0/{$ad->ad_id}/insights", [
             'access_token' => $token,
             'fields' => 'impressions,spend,reach,cpc,clicks,unique_clicks,inline_link_clicks,actions',
             'date_preset' => 'last_30d',
         ])->json('data.0') ?? [];
 
-        $adDetails = Http::get("https://graph.facebook.com/v19.0/{$ad->ad_id}", [
+        $adDetails = Http::get("https://graph.facebook.com/v22.0/{$ad->ad_id}", [
             'access_token' => $token,
             'fields' => 'name,status,adset_id,campaign_id,created_time,updated_time,adcreatives{id,name}'
         ])->json();
@@ -113,7 +253,7 @@ class CTWAController extends Controller
         $campaignId = $adDetails['campaign_id'] ?? null;
         $creativeId = $adDetails['adcreatives']['data'][0]['id'] ?? null;
 
-        $adSetDetails = Http::get("https://graph.facebook.com/v19.0/{$adsetId}", [
+        $adSetDetails = Http::get("https://graph.facebook.com/v22.0/{$adsetId}", [
             'access_token' => $token,
             'fields' => 'name,effective_status,daily_budget,start_time,end_time,targeting'
         ])->json();
@@ -129,14 +269,14 @@ class CTWAController extends Controller
             default => 'All',
         };
 
-        $campaignDetails = Http::get("https://graph.facebook.com/v19.0/{$campaignId}", [
+        $campaignDetails = Http::get("https://graph.facebook.com/v22.0/{$campaignId}", [
             'access_token' => $token,
             'fields' => 'name,status,effective_status,objective,buying_type,start_time,stop_time'
         ])->json();
 
         $formId = null;
         if ($creativeId) {
-            $creativeDetails = Http::get("https://graph.facebook.com/v19.0/{$creativeId}", [
+            $creativeDetails = Http::get("https://graph.facebook.com/v22.0/{$creativeId}", [
                 'access_token' => $token,
                 'fields' => 'object_story_spec{link_data{call_to_action}}'
             ])->json();
@@ -147,7 +287,7 @@ class CTWAController extends Controller
         $leads = [];
 
         if ($formId) {
-            $url = "https://graph.facebook.com/v19.0/{$ad->ad_id}/leads?access_token={$token}&limit=100";
+            $url = "https://graph.facebook.com/v22.0/{$ad->ad_id}/leads?access_token={$token}&limit=100";
 
             do {
                 $response = Http::get($url);
@@ -171,7 +311,7 @@ class CTWAController extends Controller
             } while ($url);
         }
 
-        $templates = Template::where('company_id', $user->company_id)->get();
+        $templates = Template::where('company_id', $this->companyId())->get();
 
         $summary = [
             'ad' => $ad,
@@ -204,13 +344,13 @@ class CTWAController extends Controller
         $user = auth()->user();
         $token = $user->fb_long_lived_token;
 
-        $ads = FacebookAd::where('user_id', $user->id)->get();
+        $ads = FacebookAd::whereIn('user_id', $this->companyUserIds())->get();
         $total = 0;
         $new = 0;
         $existing = 0;
 
         foreach ($ads as $ad) {
-            $response = Http::get("https://graph.facebook.com/v19.0/{$ad->ad_id}/leads", [
+            $response = Http::get("https://graph.facebook.com/v22.0/{$ad->ad_id}/leads", [
                 'access_token' => $token,
                 'limit' => 100,
             ]);
@@ -252,7 +392,7 @@ class CTWAController extends Controller
         }
 
         try {
-            $accountsResponse = Http::get("https://graph.facebook.com/v19.0/me/adaccounts", [
+            $accountsResponse = Http::get("https://graph.facebook.com/v22.0/me/adaccounts", [
                 'fields' => 'id,name,account_status',
                 'access_token' => $fbToken,
             ]);
@@ -266,7 +406,7 @@ class CTWAController extends Controller
             foreach ($accounts as $account) {
                 $adAccountId = str_replace('act_', '', $account['id']);
 
-                $campaignsResponse = Http::get("https://graph.facebook.com/v19.0/act_{$adAccountId}/campaigns", [
+                $campaignsResponse = Http::get("https://graph.facebook.com/v22.0/act_{$adAccountId}/campaigns", [
                     'fields' => 'id,name,status',
                     'access_token' => $fbToken,
                 ]);
@@ -274,7 +414,7 @@ class CTWAController extends Controller
                 $campaigns = $campaignsResponse->json()['data'] ?? [];
 
                 foreach ($campaigns as $campaign) {
-                    $adsResponse = Http::get("https://graph.facebook.com/v19.0/{$campaign['id']}/ads", [
+                    $adsResponse = Http::get("https://graph.facebook.com/v22.0/{$campaign['id']}/ads", [
                         'fields' => 'id,name,status,created_time,creative',
                         'access_token' => $fbToken,
                     ]);
@@ -291,6 +431,7 @@ class CTWAController extends Controller
                                 'ad_name' => $ad['name'],
                                 'status' => $ad['status'],
                                 'ad_account' => $account['name'],
+                                'ad_account_id' => $account['id'],
                                 'ad_created_at' => \Carbon\Carbon::parse($ad['created_time'])->toDateString(),
                                 'creative' => $ad['creative'] ?? [],
                             ]
@@ -309,6 +450,130 @@ class CTWAController extends Controller
 
             return redirect()->back()->withErrors('Something went wrong while fetching ads.');
         }
+    }
+
+    /**
+     * Fetch leads from Meta Graph API for the user's ads and store in ctwa_ads_click_leads.
+     */
+    public function fetchAndStoreLeads(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return redirect()->route('login')->withErrors('Please log in first.');
+        }
+
+        $token = $user->fb_long_lived_token;
+        if (!$token) {
+            return redirect()->back()->withErrors('Facebook token is missing. Please connect your Meta account.');
+        }
+
+        $companyId = $this->companyId();
+        $companyUserIds = $this->companyUserIds();
+        $adIds = collect(FacebookAd::whereIn('user_id', $companyUserIds)->pluck('ad_id'))
+            ->merge(CtwaAd::whereIn('user_id', $companyUserIds)->pluck('ad_id'))
+            ->unique()
+            ->values();
+
+        if ($adIds->isEmpty()) {
+            return redirect()->back()->withErrors('No ads found. Fetch ads first from the CTWA dashboard.');
+        }
+
+        $stored = 0;
+        $skipped = 0;
+        $errors = [];
+
+        foreach ($adIds as $adId) {
+            $nextUrl = "https://graph.facebook.com/v22.0/{$adId}/leads?access_token=" . urlencode($token) . "&limit=100";
+
+            do {
+                $response = Http::get($nextUrl);
+                if (!$response->successful()) {
+                    $errors[] = "Ad {$adId}: " . ($response->json('error.message') ?? $response->reason());
+                    break;
+                }
+
+                $json = $response->json();
+                $rawLeads = $json['data'] ?? [];
+
+                foreach ($rawLeads as $lead) {
+                    $metaLeadId = $lead['id'] ?? null;
+                    if (!$metaLeadId) {
+                        $skipped++;
+                        continue;
+                    }
+
+                    if (CTWAAdsClickLead::where('meta_lead_id', $metaLeadId)->exists()) {
+                        $skipped++;
+                        continue;
+                    }
+
+                    $fieldData = collect($lead['field_data'] ?? [])->mapWithKeys(function ($field) {
+                        return [$field['name'] => $field['values'][0] ?? null];
+                    })->toArray();
+
+                    $phone = $this->normalizePhone($fieldData['phone_number'] ?? $fieldData['phone'] ?? $fieldData['full_phone_number'] ?? null);
+                    $waId = $phone ?: ('meta_lead_' . $metaLeadId);
+                    $email = $fieldData['email'] ?? null;
+                    $name = $fieldData['full_name'] ?? $fieldData['first_name'] ?? $fieldData['last_name'] ?? null;
+                    $name = is_array($name) ? trim(implode(' ', $name)) : (string) $name;
+                    if (empty($name) && !empty($fieldData['first_name'])) {
+                        $name = trim(($fieldData['first_name'] ?? '') . ' ' . ($fieldData['last_name'] ?? ''));
+                    }
+
+                    $contactId = null;
+                    if ($phone) {
+                        $normalized = (strpos($phone, '+') === 0) ? $phone : ('+' . $phone);
+                        $contact = Contact::where('company_id', $companyId)
+                            ->where(function ($q) use ($phone, $normalized) {
+                                $q->where('phone', $phone)->orWhere('phone', $normalized);
+                            })
+                            ->first();
+                        if (!$contact) {
+                            $contact = Contact::create([
+                                'company_id' => $companyId,
+                                'phone' => $normalized,
+                                'name' => $name ?: ('Lead ' . substr($metaLeadId, -6)),
+                            ]);
+                        }
+                        $contactId = $contact->id;
+                    }
+
+                    try {
+                        CTWAAdsClickLead::create([
+                            'company_id' => $companyId,
+                            'contact_id' => $contactId,
+                            'source_id' => $adId,
+                            'source_type' => 'facebook',
+                            'source_url' => $lead['ad_id'] ?? null,
+                            'wa_id' => $waId,
+                            'meta_lead_id' => $metaLeadId,
+                        ]);
+                        $stored++;
+                    } catch (\Exception $e) {
+                        Log::warning('CTWA lead store failed', ['meta_lead_id' => $metaLeadId, 'error' => $e->getMessage()]);
+                        $skipped++;
+                    }
+                }
+
+                $nextUrl = $json['paging']['next'] ?? null;
+            } while ($nextUrl);
+        }
+
+        $message = "Fetched leads: {$stored} new, {$skipped} skipped or already stored.";
+        if (!empty($errors)) {
+            $message .= ' Some ads had errors: ' . implode('; ', array_slice($errors, 0, 3));
+        }
+
+        return redirect()->route('ctwa.leads')->with('success', $message);
+    }
+
+    private function normalizePhone($value)
+    {
+        if (empty($value) || !is_string($value)) {
+            return null;
+        }
+        $digits = preg_replace('/\D/', '', trim($value));
+        return $digits === '' ? null : ('+' . $digits);
     }
 
     public function create_ads()
@@ -331,7 +596,7 @@ class CTWAController extends Controller
             return response()->json(['error' => 'Meta token missing'], 403);
         }
 
-        $response = Http::get('https://graph.facebook.com/v19.0/search', [
+        $response = Http::get('https://graph.facebook.com/v22.0/search', [
             'type' => 'adinterest',
             'q' => $searchTerm,
             'access_token' => $token,
@@ -349,7 +614,7 @@ class CTWAController extends Controller
             return response()->json(['error' => 'Token missing'], 403);
         }
 
-        $response = Http::get("https://graph.facebook.com/v19.0/me/accounts", [
+        $response = Http::get("https://graph.facebook.com/v22.0/me/accounts", [
             'access_token' => $token,
         ]);
 
@@ -377,7 +642,7 @@ class CTWAController extends Controller
             return response()->json(['error' => 'Page ID or token missing'], 400);
         }
 
-        $profileResponse = Http::get("https://graph.facebook.com/v19.0/{$pageId}", [
+        $profileResponse = Http::get("https://graph.facebook.com/v22.0/{$pageId}", [
             'fields' => 'name,picture',
             'access_token' => $pageToken,
         ]);
@@ -401,7 +666,7 @@ class CTWAController extends Controller
             return response()->json(['error' => 'Token missing'], 403);
         }
 
-        $response = Http::get("https://graph.facebook.com/v19.0/me/adaccounts", [
+        $response = Http::get("https://graph.facebook.com/v22.0/me/adaccounts", [
             'access_token' => $token,
             'fields' => 'id,name',
         ]);
@@ -435,7 +700,7 @@ class CTWAController extends Controller
         $seen = [];
 
         foreach (range('a', 'z') as $letter) {
-            $response = Http::get('https://graph.facebook.com/v19.0/search', [
+            $response = Http::get('https://graph.facebook.com/v22.0/search', [
                 'type' => 'adgeolocation',
                 'location_types' => 'country',
                 'q' => $letter,
@@ -474,7 +739,7 @@ class CTWAController extends Controller
         $locations = [];
         $seen = [];
 
-        $response = Http::get('https://graph.facebook.com/v19.0/search', [
+        $response = Http::get('https://graph.facebook.com/v22.0/search', [
             'type' => 'adgeolocation',
             'location_types' => 'country,region,city',
             'q' => $query,
@@ -535,8 +800,8 @@ class CTWAController extends Controller
         $adAccountPrefixed = "{$adAccountId}";
 
         $uploadUrl = $isVideo
-            ? "https://graph.facebook.com/v19.0/{$adAccountPrefixed}/advideos"
-            : "https://graph.facebook.com/v19.0/{$adAccountPrefixed}/adimages";
+            ? "https://graph.facebook.com/v22.0/{$adAccountPrefixed}/advideos"
+            : "https://graph.facebook.com/v22.0/{$adAccountPrefixed}/adimages";
 
         $uploadRes = Http::attach('source', file_get_contents($mediaFile), $mediaFile->getClientOriginalName())
             ->post($uploadUrl, ['access_token' => $token]);
@@ -556,7 +821,7 @@ class CTWAController extends Controller
             return response()->json(['error' => 'Invalid media ID returned from upload'], 500);
         }
 
-        $campaignRes = Http::post("https://graph.facebook.com/v19.0/{$adAccountPrefixed}/campaigns", [
+        $campaignRes = Http::post("https://graph.facebook.com/v22.0/{$adAccountPrefixed}/campaigns", [
             'name' => $request->adName,
             'objective' => 'OUTCOME_ENGAGEMENT',
             'status' => 'PAUSED',
@@ -616,7 +881,7 @@ class CTWAController extends Controller
         $durationDays = max((int) $request->durationSlider, 1);
         $endDate = $startDate->copy()->addDays($durationDays);
 
-        $adSetRes = Http::post("https://graph.facebook.com/v19.0/{$adAccountPrefixed}/adsets", [
+        $adSetRes = Http::post("https://graph.facebook.com/v22.0/{$adAccountPrefixed}/adsets", [
             'name' => 'Ad Set - ' . now()->format('Ymd_His'),
             'daily_budget' => $dailyBudgetInput * 100,
             'campaign_id' => $campaignId,
@@ -638,10 +903,17 @@ class CTWAController extends Controller
         }
         $adSetId = $data['id'];
 
+        $companyId = $this->companyId();
         $whatsappNumber___ = Config::where('key', 'whatsapp_number')
-            ->where('model_type', \App\Models\User::class)
-            ->where('model_id', Auth::id())
+            ->where('model_type', Company::class)
+            ->where('model_id', $companyId)
             ->value('value');
+        if ($whatsappNumber___ === null) {
+            $whatsappNumber___ = Config::where('key', 'whatsapp_number')
+                ->where('model_type', \App\Models\User::class)
+                ->where('model_id', Auth::id())
+                ->value('value');
+        }
 
         $whatsappNumber = preg_replace('/\D/', '', $whatsappNumber___ ?? '');
 
@@ -677,7 +949,7 @@ class CTWAController extends Controller
         ];
 
         $creativeRes = Http::withHeaders(['Content-Type' => 'application/json'])
-            ->post("https://graph.facebook.com/v19.0/{$request->ad_account_id}/adcreatives", [
+            ->post("https://graph.facebook.com/v22.0/{$request->ad_account_id}/adcreatives", [
                 'name' => 'Creative - ' . now()->format('Ymd_His'),
                 'object_story_spec' => $objectStorySpec,
                 'access_token' => $token,
@@ -687,7 +959,7 @@ class CTWAController extends Controller
             return response()->json(['error' => 'Ad Creative creation failed', 'details' => $creativeRes], 500);
         }
 
-        $adRes = Http::post("https://graph.facebook.com/v19.0/{$adAccountPrefixed}/ads", [
+        $adRes = Http::post("https://graph.facebook.com/v22.0/{$adAccountPrefixed}/ads", [
             'name' => $request->adName,
             'adset_id' => $adSetId,
             'creative' => json_encode(['creative_id' => $creativeRes['id']]),
@@ -721,6 +993,20 @@ class CTWAController extends Controller
             'media_id' => $mediaId,
             'interests' => $request->targeting ? array_values($request->targeting) : null,
         ]);
+
+        FacebookAd::updateOrCreate(
+            ['ad_id' => $adRes['id']],
+            [
+                'user_id' => $user->id,
+                'campaign_id' => $campaignId,
+                'campaign_name' => $request->adName,
+                'ad_name' => $request->adName,
+                'status' => $adRes['status'] ?? 'ACTIVE',
+                'ad_account' => $request->ad_account_id ?? '',
+                'ad_created_at' => Carbon::now()->toDateString(),
+                'creative' => [],
+            ]
+        );
 
         return response()->json([
             'success' => true,
@@ -908,7 +1194,14 @@ class CTWAController extends Controller
             $config = DB::table('configs')
                 ->where('key', 'ctwa_webhook_token')
                 ->where('value', $token)
+                ->where('model_type', Company::class)
                 ->first();
+            if (!$config) {
+                $config = DB::table('configs')
+                    ->where('key', 'ctwa_webhook_token')
+                    ->where('value', $token)
+                    ->first();
+            }
 
             if ($mode === 'subscribe' && $verifyToken === $token && $config) {
                 return response($challenge, 200);
@@ -925,7 +1218,14 @@ class CTWAController extends Controller
         $config = DB::table('configs')
             ->where('key', 'ctwa_webhook_token')
             ->where('value', $token)
+            ->where('model_type', Company::class)
             ->first();
+        if (!$config) {
+            $config = DB::table('configs')
+                ->where('key', 'ctwa_webhook_token')
+                ->where('value', $token)
+                ->first();
+        }
 
         if (!$config) {
             Log::warning('Invalid webhook token in POST', ['token' => $token]);
@@ -976,7 +1276,8 @@ class CTWAController extends Controller
 
     public function listCampaigns()
     {
-        $campaigns = CtwaCampaign::with('messages')->get();
+        $companyId = $this->companyId();
+        $campaigns = CtwaCampaign::where('company_id', $companyId)->with('messages')->get();
         return response()->json(['campaigns' => $campaigns]);
     }
 
@@ -984,14 +1285,14 @@ class CTWAController extends Controller
     {
         $user = auth()->user();
 
-        $businesses = Http::get("https://graph.facebook.com/v19.0/me/businesses", [
+        $businesses = Http::get("https://graph.facebook.com/v22.0/me/businesses", [
             'access_token' => $user->fb_long_lived_token,
         ])->json();
 
         $data = [];
 
         foreach ($businesses['data'] ?? [] as $business) {
-            $adAccounts = Http::get("https://graph.facebook.com/v19.0/{$business['id']}/owned_ad_accounts", [
+            $adAccounts = Http::get("https://graph.facebook.com/v22.0/{$business['id']}/owned_ad_accounts", [
                 'access_token' => $user->fb_long_lived_token,
                 'fields' => 'id,account_id,name'
             ])->json();
@@ -1017,7 +1318,7 @@ class CTWAController extends Controller
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-        $leads = CTWAAdsClickLead::where('company_id', $user->company_id)->with('contact')->get();
+        $leads = CTWAAdsClickLead::where('company_id', $this->companyId())->with('contact')->get();
         return response()->json(['leads' => $leads]);
     }
 }

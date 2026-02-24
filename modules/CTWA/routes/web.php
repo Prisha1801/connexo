@@ -21,6 +21,7 @@ Route::middleware(['web', 'auth', 'impersonate'])->group(function () {
         Route::get('/create_ads', [CTWAController::class, 'create_ads'])->name('create_ads');
         Route::get('/fetch-ads', [CTWAController::class, 'fetchAds'])->name('fetch_ads');
         Route::get('/fetch-store', [CTWAController::class, 'fetchAndStoreAds'])->name('fetch_store_ads');
+        Route::get('/fetch-leads', [CTWAController::class, 'fetchAndStoreLeads'])->name('fetch_leads');
     });
     Route::get('/leads/filter', [CTWAController::class, 'filter']);
 

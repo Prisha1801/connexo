@@ -34,36 +34,58 @@
                 </div>
             </div>
 
+            @php
+                $totals = $finalTotals ?? [
+                    'impressions' => 0, 'reach' => 0, 'spend' => 0,
+                    'chats' => 0, 'leads' => 0, 'clicks' => 0,
+                ];
+            @endphp
             <div class="row g-3 mb-3">
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-2">
                     <div class="ctwa-stat-card">
                         <div>
-                            <div class="stat-label">{{ __('Total Impressions') }}</div>
-                            <div class="stat-value">0</div>
+                            <div class="stat-label">{{ __('Impressions') }}</div>
+                            <div class="stat-value">{{ number_format($totals['impressions']) }}</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-2">
                     <div class="ctwa-stat-card">
                         <div>
-                            <div class="stat-label">{{ __('Total Reach') }}</div>
-                            <div class="stat-value">0</div>
+                            <div class="stat-label">{{ __('Reach') }}</div>
+                            <div class="stat-value">{{ number_format($totals['reach']) }}</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-2">
                     <div class="ctwa-stat-card">
                         <div>
-                            <div class="stat-label">{{ __('Total Spend') }}</div>
-                            <div class="stat-value">₹0.00</div>
+                            <div class="stat-label">{{ __('Spend') }}</div>
+                            <div class="stat-value">₹{{ number_format($totals['spend'], 2) }}</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-2">
                     <div class="ctwa-stat-card">
                         <div>
-                            <div class="stat-label">{{ __('Total Leads') }}</div>
-                            <div class="stat-value">0</div>
+                            <div class="stat-label">{{ __('Clicks') }}</div>
+                            <div class="stat-value">{{ number_format($totals['clicks']) }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="ctwa-stat-card">
+                        <div>
+                            <div class="stat-label">{{ __('Chats') }}</div>
+                            <div class="stat-value">{{ number_format($totals['chats']) }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="ctwa-stat-card">
+                        <div>
+                            <div class="stat-label">{{ __('Leads') }}</div>
+                            <div class="stat-value">{{ number_format($totals['leads']) }}</div>
                         </div>
                     </div>
                 </div>

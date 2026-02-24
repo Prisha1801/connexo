@@ -18,6 +18,7 @@ class CTWAAdsClickLead extends Model
         'source_id',
         'source_type',
         'wa_id',
+        'meta_lead_id',
     ];
 
     public function company()

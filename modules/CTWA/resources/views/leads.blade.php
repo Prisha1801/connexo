@@ -14,6 +14,12 @@
 
     <div class="ctwa-card">
         <div class="p-4">
+            @if (session('success'))
+                <div class="alert alert-success mb-4">{{ session('success') }}</div>
+            @endif
+            @if ($errors->any())
+                <div class="alert alert-danger mb-4">{{ $errors->first() }}</div>
+            @endif
             <form method="GET" action="{{ route('ctwa.leads') }}" class="d-flex flex-wrap gap-3 align-items-end mb-4">
                 <div style="min-width: 200px;">
                     <label class="ctwa-form-label d-block">Filter by Meta Ad</label>
@@ -30,11 +36,16 @@
                     <label class="ctwa-form-label d-block">Search</label>
                     <input type="text" name="search" class="form-control ctwa-input" placeholder="Meta ID, Ad name, WA ID" value="{{ request('search') }}">
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                     <button type="submit" class="btn ctwa-btn-primary">
                         <i class="ni ni-zoom-split-in me-1"></i> Filter
                     </button>
                     <a href="{{ route('ctwa.leads') }}" class="btn ctwa-btn-soft">Reset</a>
+                    @if(count($adsForFilter) > 0)
+                        <a href="{{ route('ctwa.fetch_leads') }}" class="btn ctwa-btn-primary">
+                            <i class="ni ni-cloud-download-95 me-1"></i> Fetch leads from Meta
+                        </a>
+                    @endif
                 </div>
             </form>
 
@@ -74,7 +85,9 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="ctwa-empty">No leads found. Fetch ads and capture leads via CTWA.</td>
+                                <td colspan="6" class="ctwa-empty">
+                                    No leads found. Use <strong>Fetch leads from Meta</strong> above to pull leads from your Meta ads, or fetch ads first from the CTWA dashboard.
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>

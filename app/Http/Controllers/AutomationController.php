@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Events\WhatsAppTriggerRequested;
 use App\Models\Config;
+use App\Models\Company;
 
 class AutomationController extends Controller
 {
@@ -86,18 +87,28 @@ class AutomationController extends Controller
             return redirect()->route('login')->withErrors('Please log in first.');
         }
     
-        // Fetch CTWA config values
-        $webhookToken = Config::where([
-            ['key', '=', 'ctwa_webhook_token'],
-            ['model_type', '=', get_class($user)],
-            ['model_id', '=', $user->id],
-        ])->value('value');
-    
-        $webhookUrl = Config::where([
-            ['key', '=', 'ctwa_webhook_url'],
-            ['model_type', '=', get_class($user)],
-            ['model_id', '=', $user->id],
-        ])->value('value');
+        // Fetch CTWA config values (company-scoped: one token per company)
+        $companyId = session('company_id') ?? $user->company_id;
+        $webhookToken = Config::where('key', 'ctwa_webhook_token')
+            ->where('model_type', Company::class)
+            ->where('model_id', $companyId)
+            ->value('value');
+        if ($webhookToken === null) {
+            $webhookToken = Config::where('key', 'ctwa_webhook_token')
+                ->where('model_type', get_class($user))
+                ->where('model_id', $user->id)
+                ->value('value');
+        }
+        $webhookUrl = Config::where('key', 'ctwa_webhook_url')
+            ->where('model_type', Company::class)
+            ->where('model_id', $companyId)
+            ->value('value');
+        if ($webhookUrl === null) {
+            $webhookUrl = Config::where('key', 'ctwa_webhook_url')
+                ->where('model_type', get_class($user))
+                ->where('model_id', $user->id)
+                ->value('value');
+        }
     
         return view('automationform.reconnect', [
             'client_id' => $user->client_id,
@@ -225,28 +236,28 @@ class AutomationController extends Controller
                 $webhookToken = bin2hex(random_bytes(16)); // Secure token
                 $webhookUrl = route('webhook.ctwa', ['token' => $webhookToken]);
     
-                // Step 7: Store in config (polymorphic model)
+                // Step 7: Store in config (company-scoped so only this company's Meta/CTWA data is tied to this token)
+                $companyId = $user->company_id;
                 Config::updateOrCreate([
                     'key' => 'ctwa_webhook_token',
-                    'model_type' => get_class($user),
-                    'model_id' => $user->id,
+                    'model_type' => Company::class,
+                    'model_id' => $companyId,
                 ], [
                     'value' => $webhookToken,
                 ]);
     
                 Config::updateOrCreate([
                     'key' => 'ctwa_webhook_url',
-                    'model_type' => get_class($user),
-                    'model_id' => $user->id,
+                    'model_type' => Company::class,
+                    'model_id' => $companyId,
                 ], [
                     'value' => $webhookUrl,
                 ]);
     
-                // Optional: Save sender ID as config too
                 Config::updateOrCreate([
                     'key' => 'whatsapp_sender_id',
-                    'model_type' => get_class($user),
-                    'model_id' => $user->id,
+                    'model_type' => Company::class,
+                    'model_id' => $companyId,
                 ], [
                     'value' => $validated['whatsapp_sender_id'],
                 ]);

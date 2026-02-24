@@ -17,6 +17,37 @@
         </nav>
     </div>
 
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="ctwa-stat-card">
+                <div class="stat-label">{{ __('Total Ads') }}</div>
+                <div class="stat-value">{{ number_format($adsCount ?? 0) }}</div>
+                <small class="text-muted">{{ __('From Meta') }}</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="ctwa-stat-card">
+                <div class="stat-label">{{ __('Total Impressions') }}</div>
+                <div class="stat-value">{{ number_format($insights['impressions'] ?? 0) }}</div>
+                <small class="text-muted">{{ __('Last 30 days, from Meta') }}</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="ctwa-stat-card">
+                <div class="stat-label">{{ __('Total Spend') }}</div>
+                <div class="stat-value">₹{{ number_format($insights['spend'] ?? 0, 2) }}</div>
+                <small class="text-muted">{{ __('Last 30 days, from Meta') }}</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="ctwa-stat-card">
+                <div class="stat-label">{{ __('Total Leads') }}</div>
+                <div class="stat-value">{{ number_format($leadsCount ?? 0) }}</div>
+                <small class="text-muted">{{ __('Stored from Meta webhooks') }}</small>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-4">
         <div class="col-sm-6 col-lg-4">
             <a href="{{ route('ctwa.index') }}" class="ctwa-panel-card card">
@@ -25,7 +56,7 @@
                     <div>
                         <div class="panel-label">Ads Dashboard</div>
                         <div class="panel-title">View & Manage Ads</div>
-                        <div class="panel-desc">Monitor impressions, spend & performance</div>
+                        <div class="panel-desc">Monitor impressions, spend & performance (from Meta)</div>
                     </div>
                 </div>
             </a>
@@ -37,7 +68,7 @@
                     <div>
                         <div class="panel-label">Leads by Meta ID</div>
                         <div class="panel-title">CTWA Leads</div>
-                        <div class="panel-desc">Leads grouped by ad source</div>
+                        <div class="panel-desc">Leads grouped by ad source (from Meta webhooks)</div>
                     </div>
                 </div>
             </a>
@@ -49,7 +80,7 @@
                     <div>
                         <div class="panel-label">Create New Ad</div>
                         <div class="panel-title">Launch CTWA Ad</div>
-                        <div class="panel-desc">Create a new Click to WhatsApp campaign</div>
+                        <div class="panel-desc">Create a new Click to WhatsApp campaign (via Meta API)</div>
                     </div>
                 </div>
             </a>
