@@ -53,6 +53,9 @@
         <!-- DataTables CSS -->
         <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"/>
 
+        {{-- Global portal theme (one folder: resources/views/theme + public/css/portal-theme.css) --}}
+        @include('theme.head')
+
     </head> 
     <body class="{{ $class ?? '' }}">
         @auth()

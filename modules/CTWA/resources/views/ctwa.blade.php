@@ -6,52 +6,70 @@
 <div class="container-fluid mt-5 pt-5 ctwa-wrap">
     <div class="ctwa-page-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
         <div>
-            <h1 class="mb-1">Ads Dashboard</h1>
-            <p class="ctwa-subtitle mb-0">Monitor, manage, and create CTWA ads seamlessly</p>
+            <h1 class="mb-1">CTWA Ads Dashboard</h1>
+            <p class="ctwa-subtitle mb-0">Monitor, manage, and create CTWA ads seamlessly.</p>
         </div>
-        @include('ctwa::partials.nav')
-    </div>
-
-    <div class="row g-4 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="ctwa-stat-card">
-                <div class="stat-label">Impressions</div>
-                <div class="stat-value">755,083</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="ctwa-stat-card">
-                <div class="stat-label">Spend</div>
-                <div class="stat-value">₹18,153</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="ctwa-stat-card">
-                <div class="stat-label">Leads</div>
-                <div class="stat-value">78</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="ctwa-stat-card">
-                <div class="stat-label">Reach</div>
-                <div class="stat-value">662,152</div>
-            </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url()->previous() ?? route('dashboard') }}" class="btn btn-sm ctwa-btn-soft">{{ __('Back') }}</a>
         </div>
     </div>
 
-    <div class="ctwa-card">
-        <div class="p-4">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-                <form method="GET" action="{{ route('ctwa.index') }}" class="d-flex" style="max-width: 320px;">
-                    <input type="text" name="search" class="form-control ctwa-input me-2" placeholder="Search by Ad name" value="{{ request('search') }}">
-                    <button type="submit" class="btn ctwa-btn-soft"><i class="ni ni-zoom-split-in"></i></button>
+    <div class="ctwa-card mb-4">
+        <div class="p-3 p-md-4">
+            <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-3 mb-3">
+                <form method="GET" action="{{ route('ctwa.index') }}" class="flex-grow-1">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-0"><i class="ni ni-zoom-split-in text-muted"></i></span>
+                        <input type="text" name="search" class="form-control ctwa-input border-0"
+                               placeholder="Search by ad name" value="{{ request('search') }}">
+                    </div>
                 </form>
-                <a href="{{ route('ctwa.fetch_store_ads') }}" class="btn ctwa-btn-primary">
-                    <i class="fas fa-download me-2"></i>Fetch Ads
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('ctwa.fetch_store_ads') }}" class="btn ctwa-btn-soft">
+                        <i class="fas fa-download me-2"></i>{{ __('Fetch Ads') }}
+                    </a>
+                    <a href="{{ route('ctwa.create_ads') }}" class="btn ctwa-btn-primary">
+                        <i class="ni ni-fat-add me-2"></i>{{ __('Create CTWA Ad') }}
+                    </a>
+                </div>
             </div>
 
-            <div class="table-responsive">
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3">
+                    <div class="ctwa-stat-card">
+                        <div>
+                            <div class="stat-label">{{ __('Total Impressions') }}</div>
+                            <div class="stat-value">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="ctwa-stat-card">
+                        <div>
+                            <div class="stat-label">{{ __('Total Reach') }}</div>
+                            <div class="stat-value">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="ctwa-stat-card">
+                        <div>
+                            <div class="stat-label">{{ __('Total Spend') }}</div>
+                            <div class="stat-value">₹0.00</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="ctwa-stat-card">
+                        <div>
+                            <div class="stat-label">{{ __('Total Leads') }}</div>
+                            <div class="stat-value">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive mt-3">
                 <table class="table ctwa-table">
                     <thead>
                         <tr>
