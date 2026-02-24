@@ -23,6 +23,11 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
     ];
 
+     protected $routeMiddleware = [
+        // Other middlewares
+        'otp.verified' => \App\Http\Middleware\CheckOtpVerification::class,
+    ];    
+
     /**
      * The application's route middleware groups.
      *

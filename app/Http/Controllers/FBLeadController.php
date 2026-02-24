@@ -50,9 +50,14 @@ class FBLeadController extends Controller
                 return redirect()->route('dashboard')->withStatus(__('No Access'));
             endif;
          }catch(\Exception $e){
+<<<<<<< HEAD
             echo '<pre>';
             print_r($e->getMessage());
             die;
+=======
+            \Log::error('FB Lead error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred: ' . $e->getMessage());
+>>>>>>> akanksha
             return redirect()->route('dashboard')->withErrors($e->getMessage());
          }
     }

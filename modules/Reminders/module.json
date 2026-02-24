@@ -41,6 +41,7 @@
             "route":"reminders.panel",
             "isGroup":true,
             "menus":[ 
+                
                 {
                     "name": "Reservations",
                     "icon": "ni ni-calendar-grid-58 text-primary",

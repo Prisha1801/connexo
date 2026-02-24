@@ -66,9 +66,14 @@ class FacebookLeadsController extends Controller
             ]);
             }
          }catch(\Exception $e){
+<<<<<<< HEAD
             echo '<pre>';
             print_r($e->getMessage());
             die;
+=======
+            \Log::error('Facebook leads error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred: ' . $e->getMessage());
+>>>>>>> akanksha
             return redirect()->route('dashboard')->withErrors($e->getMessage());
          }
     }

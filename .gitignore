@@ -9,6 +9,13 @@ yarn-error.log
 .diff-files.txt
 ngrok
 
+<<<<<<< HEAD
+=======
+/public/uploads/
+*.zip
+*.mp4
+*.pdf
+>>>>>>> akanksha
 # Laravel Specific
 /public/hot
 /public/storage
@@ -55,3 +62,12 @@ _old_backup/
 UPDATE/
 freshcode/
 __oke/
+
+
+*.zip
+*.mp4
+*.pdf
+/public/uploads/
+node_modules/
+vendor/
+.env

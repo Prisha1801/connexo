@@ -72,7 +72,7 @@
                             @yield('cardbody')
                        </div>
                    @else
-                    @if(count($items))
+                    @if(isset($items) && is_countable($items) && count($items) > 0)
                         <div class="table-responsive">
                             <table class="table align-items-center table-flush">
                                 <thead class="thead-light">
@@ -99,7 +99,7 @@
                         </div>
                     @endif
                     <div class="card-footer py-4">
-                        @if(count($items))
+                        @if(isset($items) && is_countable($items) && count($items) > 0)
                         
                             @unless(isset($hidePaging) && $hidePaging)
                                 <nav class="d-flex justify-content-end" aria-label="...">
@@ -107,7 +107,9 @@
                                 </nav>
                             @endunless
                         @else
-                            <h4>{{__('crud.no_items',['items'=>$item_names])}}</h4>
+                            @if(isset($item_names))
+                                <h4>{{__('crud.no_items',['items'=>$item_names])}}</h4>
+                            @endif
                         @endif
                     </div>
                    @endif

@@ -8,6 +8,7 @@ use App\Http\Controllers\CRUD\PostsController;
 use App\Http\Controllers\FrontEndController;
 use App\Http\Controllers\FacebookLeadsController;
 use App\Http\Controllers\AutomationController;
+use App\Http\Controllers\CTWAController;
 use App\Http\Controllers\OtpController;
 use App\Http\Controllers\FBLeadController;
 use App\Http\Controllers\PlansController;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use App\Events\WhatsAppTriggerRequested;
 use App\Http\Controllers\CandidateController;
+use App\Http\Controllers\UserProfileController;
 
 
 /*
@@ -63,6 +65,43 @@ Route::get('/clear-cache', function () {
         print_r($e->getMessage());
     }
 });
+// Secured admin routes - only accessible in local environment or with proper authentication
+Route::middleware(['auth', 'isAdmin'])->group(function () {
+    Route::get('/migrate', function () {
+        if (!config('app.debug') && config('app.env') !== 'local') {
+            abort(403, 'This route is only available in development environment');
+        }
+        \Illuminate\Support\Facades\Artisan::call('migrate', [
+            '--force' => true,
+        ]);
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        return nl2br($output);
+    });
+
+    Route::get('/clear-cache', function () {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('cache:clear');
+            \Illuminate\Support\Facades\Artisan::call('config:clear');
+            \Illuminate\Support\Facades\Artisan::call('route:clear');
+            \Illuminate\Support\Facades\Artisan::call('view:clear');
+            \Illuminate\Support\Facades\Artisan::call('config:cache');
+            return response()->json(['status' => 'success', 'message' => 'All caches cleared successfully!']);
+        } catch (\Exception $e) {
+            \Log::error('Cache clear error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error', 
+                'message' => config('app.debug') ? $e->getMessage() : 'Failed to clear cache'
+            ], 500);
+        }
+    });
+});
+
+Route::get('/ctwa/webhook/{token}', [CtwaController::class, 'verify']);
+// Route::post('/ctwa/webhook/{token}', [CtwaController::class, 'receive']);
+Route::post('/ctwa/webhook/{token}', [CtwaController::class, 'receive'])->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+Route::get('/ctwa/campaigns', [CtwaController::class, 'listCampaigns']);
+Route::post('/ctwa/webhook/{token}', [CtwaController::class, 'handle'])->name('webhook.ctwa');
+Route::get('/getPayMetaData', [CtwaController::class, 'getPayMetaData']);
 
 Route::get('/', [FrontEndController::class, 'index'])->name('landing');
 //*** CUSTOM ROUTES */
@@ -200,6 +239,24 @@ Route::middleware(['web', 'auth', 'isMenuMiddleware', 'impersonate','acivatedPro
     Route::post('/automation/fetch-ads', [AutomationController::class, 'fetchAds'])->name('automation.fetchAds');
     Route::post('/automation/store-or-update', [AutomationController::class, 'storeOrUpdate'])->name('automation.storeOrUpdate');
     
+    // CTWA
+    Route::get('/ctwa', [CTWAController::class, 'index'])->name('ctwa.index');
+    Route::get('/ctwa/create_ads', [CTWAController::class, 'create_ads'])->name('ctwa.create_ads');
+    Route::get('/meta/countries', [CTWAController::class, 'getCountries']);
+    Route::get('/meta/locations', [CTWAController::class, 'getLocations']);
+    Route::get('/meta/meta-interests', [CTWAController::class, 'searchMetaInterests']);
+    Route::get('/meta/pages', [CTWAController::class, 'getUserPages']);
+    Route::post('/meta/page-profile', [CTWAController::class, 'getMetaProfileFromSelection']);
+    Route::get('/meta/ad-accounts', [CTWAController::class, 'getMetaAdAccounts']);
+    Route::post('/meta/ads/create', [CTWAController::class, 'submitCtwaAd'])->name('ctwa.create');
+    Route::get('/ctwa/fetch-ads', [CtwaController::class, 'fetchAds'])->name('ctwa.fetch_ads');
+    Route::get('/ctwa/fetch-store', [CtwaController::class, 'fetchAndStoreAds'])->name('ctwa.fetch_store_ads');
+    Route::get('/ad-details/{adId}', [CtwaController::class, 'show'])->name('ad.details');
+    Route::get('/ads/{ad}', [CtwaController::class, 'show'])->name('ads.show');
+    Route::get('/leads/filter', [CtwaController::class, 'filter']);
+    Route::post('/campaigns/send', [CtwaController::class, 'sendCampaign'])->name('campaign.send');
+
+
 
 
 
@@ -284,3 +341,14 @@ Route::get('/test-whatsapp-trigger', function () {
 })->name('whatsapp.test');
 
 Route::post('/apply', [CandidateController::class, 'store'])->name('apply.store');
+
+
+Route::get('account/profile/show', [UserProfileController::class, 'show'])->name('account.profile.show');
+Route::get('account/profile/api', [UserProfileController::class, 'api'])->name('account.profile.api');
+Route::get('account/profile/billing', [UserProfileController::class, 'billing'])->name('account.profile.billing');
+Route::put('account/profile/{id}/update', [UserProfileController::class, 'update'])->name('account.profile.update');
+Route::put('profile/update/billing', [UserProfileController::class, 'updateBilling'])->name('account.profile.billing.update');
+
+Route::post('/save_data_google_facebook', [UserProfileController::class, 'saveData'])->name('save_data_google_facebook');
+Route::post('/store/billing_data', [UserProfileController::class, 'storeBilling'])->name('store.billing');
+Route::post('/omit_modal', [UserProfileController::class, 'omitModal'])->name('omit_modal');
