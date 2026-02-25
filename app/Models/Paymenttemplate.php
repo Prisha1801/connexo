@@ -32,6 +32,27 @@ class Paymenttemplate extends Model
     }
 
     /**
+     * Return the active payment configuration string based on payment_type.
+     * 0 = WhatsApp Pay, 1 = Razorpay, 2 = PayU, 3 = Zaakpay, 4 = Meta Pay.
+     */
+    public function getActivePaymentConfig()
+    {
+        $type = (int) ($this->payment_type ?? 0);
+        switch ($type) {
+            case 1:
+                return $this->payment_configuration_other ?? '';
+            case 2:
+                return $this->payment_configuration_payu ?? '';
+            case 3:
+                return $this->payment_configuration_zaakpay ?? '';
+            case 4:
+                return $this->payment_configuration_meta ?? '';
+            default:
+                return $this->payment_configuration ?? '';
+        }
+    }
+
+    /**
      * Booted model events
      */
     protected static function booted()

@@ -12,10 +12,7 @@ use App\Models\Company;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Response;
-<<<<<<< HEAD
-=======
 use Illuminate\Http\Request;
->>>>>>> akanksha
 class FrontEndController extends Controller
 {
     public function register(): RedirectResponse
@@ -48,7 +45,6 @@ class FrontEndController extends Controller
         // return (new $landingClassToUse())->landing();
     }
 
-<<<<<<< HEAD
     function getFacebookLeadInfo() {
         try {
                     //add facebook code
@@ -84,66 +80,6 @@ class FrontEndController extends Controller
                     'message' => $e->getMessage(),
                 ], Response::HTTP_INTERNAL_SERVER_ERROR);
             }
-=======
-    function getFacebookLeadInfo(Request $request) {
-        try {
-            // Validate input
-            $validated = $request->validate([
-                'to' => 'required|string',
-                'template_name' => 'required|string',
-            ]);
-
-            // Get token from environment or config
-            $accessToken = config('services.facebook.access_token') ?? env('FACEBOOK_ACCESS_TOKEN');
-            
-            if (!$accessToken) {
-                return response()->json([
-                    'error' => 'Facebook access token not configured',
-                ], Response::HTTP_INTERNAL_SERVER_ERROR);
-            }
-
-            // Get business ID from config
-            $businessId = config('services.facebook.business_id') ?? env('FACEBOOK_BUSINESS_ID', '390881210779682');
-            
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $accessToken,
-                'Content-Type' => 'application/json',
-            ])->post("https://graph.facebook.com/v21.0/{$businessId}/messages", [
-                'messaging_product' => 'whatsapp',
-                'to' => $validated['to'],
-                'type' => 'template',
-                'template' => [
-                    'name' => $validated['template_name'],
-                    'language' => [
-                        'code' => 'en_US',
-                    ],
-                ],
-            ]);
-
-            if ($response->successful()) {
-                return response()->json([
-                    'message' => 'Message sent successfully',
-                    'response' => $response->json(),
-                ], Response::HTTP_OK);
-            } else {
-                return response()->json([
-                    'error' => 'Failed to send the message',
-                    'response' => $response->json(),
-                ], Response::HTTP_BAD_REQUEST);
-            }
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'error' => 'Validation failed',
-                'messages' => $e->errors(),
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (\Exception $e) {
-            \Log::error('Facebook lead info error: ' . $e->getMessage());
-            return response()->json([
-                'error' => 'An error occurred',
-                'message' => config('app.debug') ? $e->getMessage() : 'Internal server error',
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
->>>>>>> akanksha
     }
 
     /**
@@ -173,17 +109,8 @@ class FrontEndController extends Controller
      */
     public function getSubDomain()
     {
-<<<<<<< HEAD
         $subdomain = substr_count(str_replace('www.', '', $_SERVER['HTTP_HOST']), '.') > 1 ? substr(str_replace('www.', '', $_SERVER['HTTP_HOST']), 0, strpos(str_replace('www.', '', $_SERVER['HTTP_HOST']), '.')) : '';
         if ($subdomain == '' | in_array($subdomain, config('settings.ignore_subdomains'))) {
-=======
-        $host = request()->getHost();
-        $subdomain = substr_count(str_replace('www.', '', $host), '.') > 1 
-            ? substr(str_replace('www.', '', $host), 0, strpos(str_replace('www.', '', $host), '.')) 
-            : '';
-        
-        if ($subdomain == '' || in_array($subdomain, config('settings.ignore_subdomains', []))) {
->>>>>>> akanksha
             return false;
         }
 
@@ -238,15 +165,9 @@ class FrontEndController extends Controller
  
          //Change Language
          $locale = Cookie::get('lang') ? Cookie::get('lang') : config('settings.app_locale');
-<<<<<<< HEAD
          if(isset($_GET['lang'])){
               //this is language route
               $locale = $_GET['lang'];
-=======
-         if(request()->has('lang')){
-              //this is language route
-              $locale = request()->input('lang');
->>>>>>> akanksha
          }
  
          if($locale!="android-chrome-256x256.png"){
@@ -284,19 +205,11 @@ class FrontEndController extends Controller
          try {
              $response = new \Illuminate\Http\Response(view('frontend.landing', $data));
          } catch (\Throwable $th) {
-<<<<<<< HEAD
              echo '<pre>';
              print_r($th->getMessage());
              die;
          //     dd($th->getMessage());
          //    dd('Please read the update guide for version 3.2.0. You need to upload the landing page module');
-=======
-             \Log::error('Landing page error: ' . $th->getMessage());
-             if (config('app.debug')) {
-                 return response()->view('errors.500', ['message' => $th->getMessage()], 500);
-             }
-             abort(500, 'Please read the update guide for version 3.2.0. You need to upload the landing page module');
->>>>>>> akanksha
          }
  
         
@@ -330,12 +243,7 @@ class FrontEndController extends Controller
              $response = new \Illuminate\Http\Response(view('frontend.features',$data));
              return $response;
          }catch(\Exception $e){
-<<<<<<< HEAD
              dd($e->getMessage());
-=======
-             \Log::error('Features page error: ' . $e->getMessage());
-             return redirect()->route('landing')->with('error', 'An error occurred while loading features.');
->>>>>>> akanksha
          }
      }
  

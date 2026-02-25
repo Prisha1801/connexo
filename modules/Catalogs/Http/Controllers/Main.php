@@ -2811,6 +2811,8 @@ class Main extends Controller
 
             $discountDis = strtoupper($order->discount_type) . ($order->discount_type == 'percent' ? ' : ' . $order->discount . '%' : '');
 
+            $activeConfig = $paymentConfig->getActivePaymentConfig();
+
             // Send payment message with updated amount
             $response = $this->sendWhatsAppOrderDetailMessage(
                 $order->phone_number,
@@ -2826,8 +2828,8 @@ class Main extends Controller
                     'tax_offset' => $order->tax_offset,
                 ],
                 $order->reference_id,
-                $paymentConfig->payment_configuration,
-                $paymentConfig->payment_configuration_other,
+                $activeConfig,
+                $paymentConfig->payment_configuration_other ?? '',
                 $paymentConfig->payment_type,
                 $paymentConfig->shipping_description,
                 $order->shipping_cast,
@@ -3125,7 +3127,8 @@ class Main extends Controller
 
         $catalogs = Catalog::where('company_id', $companyId)->get();
         $products = CatalogProduct::where('company_id', $companyId)->get();
-        $Paymenttemplate = Paymenttemplate::where('company_id', $companyId)->first();
+        // Use firstOrNew so view always has a model (avoids null on Shipping & Discount and other tabs)
+        $Paymenttemplate = Paymenttemplate::firstOrNew(['company_id' => $companyId]);
         $config = Config::where('model_id', $companyId)->where('key', 'whatsapp_phone')->first();
 
         return view(
@@ -3181,6 +3184,9 @@ class Main extends Controller
             'footer',
             'payment_configuration',
             'payment_configuration_other',
+            'payment_configuration_payu',
+            'payment_configuration_zaakpay',
+            'payment_configuration_meta',
             'shipping',
             'shipping_description',
             'shipping_free_from_amount',
@@ -3218,8 +3224,14 @@ class Main extends Controller
             'payment_refunded',
             'order_cancel',
 
-            // NEW: Default template for 24hr inactive window
+            // Default template for 24hr inactive window
             'default_template_id',
+
+            // Catalog options
+            'low_stock_alert_at',
+            'allow_backorders',
+            'catalog_tagline',
+            'catalog_trigger_keywords',
         ];
 
         foreach ($fields as $field) {
@@ -3236,14 +3248,19 @@ class Main extends Controller
         //     }
         // }
 
-        if ($request->has('shipping_free_from_amount')) {
-            $shippingMethods = [$request->input('enable_self_pickup', 0), $request->input('enable_in_store', 0), $request->input('enable_delivery', 0)];
-
+        // Validate shipping: at least one method required when shipping/discount form is submitted
+        $hasShippingFields = $request->has('shipping_free_from_amount') || $request->has('enable_self_pickup') || $request->has('shipping');
+        if ($hasShippingFields) {
+            $shippingMethods = [
+                (int) $request->input('enable_self_pickup', 0),
+                (int) $request->input('enable_in_store', 0),
+                (int) $request->input('enable_delivery', 0),
+            ];
             if (!in_array(1, $shippingMethods)) {
                 return response()->json(
                     [
                         'success' => false,
-                        'message' => 'At least one shipping method must be enabled.',
+                        'message' => __('At least one shipping method must be enabled (Self Pickup, In-store or Delivery).'),
                     ],
                     422,
                 );

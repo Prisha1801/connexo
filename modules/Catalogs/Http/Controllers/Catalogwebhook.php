@@ -105,8 +105,70 @@ class Catalogwebhook extends Controller
             elseif ($message['type'] === 'button' && isset($message['button']['payload']) && $message['button']['payload'] === 'Track Cart-Order') {
                 $this->handleTrackOrderRequest($waId);
             }
+            // Handle plain text messages (catalog trigger keywords)
+            elseif ($message['type'] === 'text' && isset($message['text']['body'])) {
+                $this->handleTextMessageForCatalog($message['text']['body'], $waId);
+            }
         } catch (\Exception $e) {
             Log::error('Message processing error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Handle plain text messages that should trigger the catalog/menu reply.
+     */
+    private function handleTextMessageForCatalog(string $body, string $waId): void
+    {
+        try {
+            $text = mb_strtolower(trim($body));
+            if ($text === '') {
+                return;
+            }
+
+            // Load catalog trigger keywords from settings
+            $settings = Paymenttemplate::where('company_id', $this->companyId)->first();
+            $keywordsRaw = $settings->catalog_trigger_keywords ?? 'shop,catalog,menu';
+
+            $keywords = collect(explode(',', $keywordsRaw))
+                ->map(function ($k) {
+                    return mb_strtolower(trim($k));
+                })
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($keywords->isEmpty()) {
+                return;
+            }
+
+            // Check if incoming text contains any trigger keyword as a word
+            $normalized = ' ' . preg_replace('/\s+/', ' ', $text) . ' ';
+            $match = $keywords->first(function ($keyword) use ($normalized) {
+                if ($keyword === '') {
+                    return false;
+                }
+                // word boundary style match
+                return mb_strpos($normalized, ' ' . $keyword . ' ') !== false;
+            });
+
+            if (!$match) {
+                return;
+            }
+
+            Log::info("Catalog trigger keyword matched", ['keyword' => $match, 'text' => $text]);
+
+            // Find any active catalog + first product category to show as menu
+            $catalog = Catalog::where('company_id', $this->companyId)->where('status', 1)->first();
+            $category = ProductCategory::where('company_id', $this->companyId)->first();
+
+            if ($catalog && $category) {
+                $this->sendWhatsAppMenuReply($waId, $category, $catalog->catalog_id);
+            } else {
+                // Fallback: simple text if catalog or category is missing
+                $this->sendTextMessage($waId, __('Catalog is not configured yet. Please contact the store.'));
+            }
+        } catch (\Exception $e) {
+            Log::error('Catalog keyword handling error: ' . $e->getMessage());
         }
     }
 
@@ -205,7 +267,7 @@ class Catalogwebhook extends Controller
                                         'tax_description' => '', // Add default or logic if needed
                                     ],
                                     $orderUpdate->reference_id,
-                                    $paymentTemplate->payment_configuration,
+                                    $paymentTemplate->getActivePaymentConfig(),
                                     $paymentTemplate->payment_configuration_other,
                                     $paymentTemplate->payment_type,
                                     $paymentTemplate->shipping_description,

@@ -105,15 +105,12 @@ class SettingsController extends Controller
      */
     /**
      * Shows the settings edit screen.
-     * Performs migrations and loads settings and files for the view.
+     * Loads settings and files for the view.
      *
      * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
      */
     public function index()
     {
-        Artisan::call('migrate', ['--force' => true]);
-        Artisan::call('module:migrate', ['--force' => true]);
-
         if (auth()->user()->hasRole('admin')) {
 
             $curreciesArr = [];
